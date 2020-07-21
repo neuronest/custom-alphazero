@@ -1,1 +1,1 @@
-# chess_ai
+# Custom AlphaZero
