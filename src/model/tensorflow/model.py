@@ -196,7 +196,7 @@ def train(
     labels: List[np.ndarray],
     batch_size: int,
     epochs: int,
-):
+) -> float:
     policy_labels, value_labels = labels
     # Calling fit instead of apply_gradients seems to be preferred for now in TF2
     # https://github.com/tensorflow/tensorflow/issues/35585

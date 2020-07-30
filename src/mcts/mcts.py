@@ -149,7 +149,9 @@ class MCTS:
             if leaf_node.board.moves:
                 value = self.evaluate_and_expand(leaf_node)
             else:
-                value = self.path_cache[-1].exploitation_term()
+                value = self.path_cache[
+                    -1
+                ].exploitation_term()  # TODO: @yohskua verify everything is ok here
             self.backup(value)
 
     def play(

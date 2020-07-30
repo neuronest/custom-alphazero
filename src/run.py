@@ -75,7 +75,6 @@ if __name__ == "__main__":
     all_possible_moves = get_all_possible_moves()
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
-    samples_storage = {"states": [], "policies": [], "rewards": [], "losses": []}
     processes = multiprocessing.cpu_count() - 1
     states_batch, policies_batch, rewards_batch = None, None, None
     for iteration in range(ConfigGeneral.iterations):

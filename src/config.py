@@ -33,10 +33,10 @@ class ConfigConnectN:
 
 class ConfigMCTS:
     exploration_constant = 1.5
-    enable_dirichlet_noise = True
+    enable_dirichlet_noise = False  # disabled for now
     dirichlet_noise_value = 0.03
     dirichlet_noise_ratio = 0.25
-    index_move_greedy = 30
+    index_move_greedy = 0  # 30 should be the default value, disabled for now
 
 
 class ConfigModel:
@@ -65,8 +65,11 @@ class ConfigServing:
     models_path = "src/model/saved_models"
     samples_path = "src/model/samples"
     logs_path = "src/model/logs"
-    # import multiprocessing
-    # inference_batch_size = multiprocessing.cpu_count() - 1  # seems not to run as fast as expected for now
+    """
+    import multiprocessing
+    # seems not to run as fast as expected for now
+    inference_batch_size = multiprocessing.cpu_count() - 1
+    """
     inference_batch_size = 1
     inference_timeout = 1
     model_checkpoint_frequency = 1

@@ -48,11 +48,11 @@ class Board:
 
     @property
     def array_one_hot(self) -> np.ndarray:
-        return np.eye(len(ConfigConnectN.pieces))[self.array]
+        return np.eye(len(self.pieces))[self.array]
 
     @property
     def array_one_hot_mirror(self) -> np.ndarray:
-        return np.eye(len(ConfigConnectN.pieces))[self.mirror()]
+        return np.eye(len(self.pieces))[self.mirror()]
 
     @property
     def full_state(self) -> np.ndarray:

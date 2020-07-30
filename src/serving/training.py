@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from fastapi import APIRouter, Body, Request
 
-from src.config import ConfigGeneral, ConfigServing, ConfigModel
+from src.config import ConfigGeneral, ConfigServing
 from src.model.tensorflow.model import train
 from src.serving.schema import ModelTrainingInputs, ModelTrainingOutputs
 from src.serving.example import TrainingExample
