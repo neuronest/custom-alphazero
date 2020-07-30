@@ -4,9 +4,7 @@ from typing import Optional
 
 @total_ordering
 class Move:
-    def __init__(
-        self, gravity: bool, x: int, y: Optional[int] = None,
-    ):
+    def __init__(self, gravity: bool, x: int, y: Optional[int] = None):
         self.gravity = gravity
         if self.gravity:
             assert y is None

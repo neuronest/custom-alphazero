@@ -82,7 +82,5 @@ async def post(
         for sample, sample_type in zip(
             [states, policies, values], ["states", "policies", "values"]
         ):
-            np.save(
-                os.path.join(outputs_path, sample_type), sample,
-            )
+            np.save(os.path.join(outputs_path, sample_type), sample)
     return response

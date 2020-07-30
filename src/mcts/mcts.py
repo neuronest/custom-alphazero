@@ -113,10 +113,7 @@ class MCTS:
             probabilities, value = self.model(
                 np.expand_dims(node.board.full_state, axis=0)
             )
-            probabilities, value = (
-                probabilities.numpy().ravel(),
-                value.numpy().item(),
-            )
+            probabilities, value = (probabilities.numpy().ravel(), value.numpy().item())
         else:
             probabilities, value = infer_sample(
                 node.board.full_state, concurrency=self.concurrency
