@@ -1,2 +1,1 @@
-conda activate ./.env
-
+conda activate alphazero

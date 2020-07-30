@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-rm -rf ./env
 rm -rf .ipynb_checkpoints
 
-conda create -p .env python=3.7
-conda activate ./.env
+conda remove --name alphazero --all
+conda create --name alphazero python=3.7
+conda activate alphazero
 conda install ipython
 conda install jupyter
 
