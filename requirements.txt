@@ -1,4 +1,4 @@
-pre-commit==2.2.0
+pre-commit==2.6.0
 black==19.10b0
 numpy==1.18.2
 matplotlib==3.2.1
