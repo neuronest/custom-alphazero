@@ -149,7 +149,7 @@ class Board:
         if self.game_over:
             return
         x, y = last_move_x, last_move_y
-        if not self.game_over:
+        if not self.game_over:  # todo: remove useless condition
             for direction in ConfigConnectN.directions:
                 number_connexions = 1
                 for direction_current in [
@@ -175,7 +175,9 @@ class Board:
                         else:
                             break
                     x, y = last_move_x, last_move_y
-        if not self.game_over and not len(self.moves):
+        if not self.game_over and not len(
+            self.moves
+        ):  # todo: remove useless condition if not self.game_over
             self.game_over = True
             self.is_null = True
 
