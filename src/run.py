@@ -3,7 +3,7 @@ import numpy as np
 import platform
 import time
 import argparse
-from typing import List
+from typing import List, Tuple
 from functools import partial
 
 from src.config import ConfigGeneral, ConfigMCTS
@@ -38,7 +38,9 @@ def printer(
     print()
 
 
-def play_game(process_id: int, all_possible_moves: List[Move], mcts_iterations: int):
+def play_game(
+    process_id: int, all_possible_moves: List[Move], mcts_iterations: int
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
     board = Board()
     mcts = MCTS(
@@ -56,6 +58,7 @@ def play_game(process_id: int, all_possible_moves: List[Move], mcts_iterations: 
         policies_game.append(policy)
     reward = board.get_result()
     states_game = states_mirror_game if board.odd_moves_number else states_straight_game
+    states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
     # reverse rewards as odd positions as these are views from the opposite player
     rewards_game[1::2] = -rewards_game[1::2]
@@ -89,7 +92,7 @@ if __name__ == "__main__":
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
-            results = play_game(
+            states, policies, rewards = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
@@ -107,12 +110,12 @@ if __name__ == "__main__":
             )
             pool.close()
             pool.join()
-        states, policies, rewards = list(zip(*results))
-        states, policies, rewards = (
-            np.vstack(states),
-            np.vstack(policies),
-            np.concatenate(rewards),
-        )
+            states, policies, rewards = list(zip(*results))
+            states, policies, rewards = (
+                np.vstack(states),
+                np.vstack(policies),
+                np.concatenate(rewards),
+            )
         if any(
             sample is None for sample in [states_batch, policies_batch, rewards_batch]
         ):
