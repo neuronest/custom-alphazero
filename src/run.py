@@ -2,6 +2,7 @@ import multiprocessing
 import numpy as np
 import platform
 import time
+import argparse
 from typing import List
 from functools import partial
 
@@ -66,30 +67,46 @@ def play_game(process_id: int, all_possible_moves: List[Move], mcts_iterations: 
 
 
 if __name__ == "__main__":
-    # https://bugs.python.org/issue33725
-    # https://stackoverflow.com/a/47852388/5490180
-    if platform.system() == "Linux":
-        multiprocessing.set_start_method("fork")
-    else:
-        multiprocessing.set_start_method("spawn")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mono-process",
+        action="store_true",
+        help="Disable multiprocessing, used mainly for testing",
+    )
+    args = parser.parse_args()
+    mono_process = args.mono_process
+    if not mono_process:
+        # https://bugs.python.org/issue33725
+        # https://stackoverflow.com/a/47852388/5490180
+        if platform.system() == "Linux":
+            multiprocessing.set_start_method("fork")
+        else:
+            multiprocessing.set_start_method("spawn")
     all_possible_moves = get_all_possible_moves()
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
-    processes = multiprocessing.cpu_count() - 1
     states_batch, policies_batch, rewards_batch = None, None, None
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
-        pool = multiprocessing.Pool(processes=processes)
-        results = pool.map(
-            partial(
-                play_game,
+        if mono_process:
+            results = play_game(
+                process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
-            ),
-            range(1, processes + 1),
-        )
-        pool.close()
-        pool.join()
+            )
+        else:
+            processes = multiprocessing.cpu_count() - 1
+            pool = multiprocessing.Pool(processes=processes)
+            results = pool.map(
+                partial(
+                    play_game,
+                    all_possible_moves=all_possible_moves,
+                    mcts_iterations=ConfigGeneral.mcts_iterations,
+                ),
+                range(1, processes + 1),
+            )
+            pool.close()
+            pool.join()
         states, policies, rewards = list(zip(*results))
         states, policies, rewards = (
             np.vstack(states),

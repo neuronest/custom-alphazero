@@ -113,7 +113,10 @@ class MCTS:
             probabilities, value = self.model(
                 np.expand_dims(node.board.full_state, axis=0)
             )
-            probabilities, value = (probabilities.numpy().ravel(), value.numpy().item())
+            probabilities, value = (
+                probabilities.numpy().ravel(),
+                value.numpy().item(),
+            )
         else:
             probabilities, value = infer_sample(
                 node.board.full_state, concurrency=self.concurrency
@@ -143,12 +146,12 @@ class MCTS:
     def search(self, iterations_number: int):
         for _ in range(iterations_number):
             leaf_node = self.select()
-            if leaf_node.board.moves:
+            if not leaf_node.board.is_game_over():
                 value = self.evaluate_and_expand(leaf_node)
             else:
-                value = self.path_cache[
-                    -1
-                ].exploitation_term()  # TODO: @yohskua verify everything is ok here
+                value = (
+                    leaf_node.board.get_result()
+                )  # TODO: @yohskua verify everything is ok here
             self.backup(value)
 
     def play(
