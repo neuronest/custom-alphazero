@@ -7,4 +7,4 @@ conda activate ./env
 
 pip install --upgrade pip
 pip install -Ur requirements.txt
-env/bin/pre-commit install
+./env/bin/pre-commit install
