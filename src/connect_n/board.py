@@ -1,6 +1,6 @@
 import copy
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Union
 from itertools import product
 
 from src.config import ConfigConnectN
@@ -47,6 +47,14 @@ class Board:
         return np.array_equal(self.array, other.array)
 
     @property
+    def turn_mirror(self) -> int:
+        return (
+            ConfigConnectN.black
+            if self.turn == ConfigConnectN.white
+            else ConfigConnectN.white
+        )
+
+    @property
     def array_one_hot(self) -> np.ndarray:
         return np.eye(len(self.pieces))[self.array]
 
@@ -56,11 +64,21 @@ class Board:
 
     @property
     def full_state(self) -> np.ndarray:
-        return self.array_one_hot
+        return np.dstack(
+            [
+                self.array_one_hot,
+                np.ones((self.board_height, self.board_width)) * self.turn,
+            ]
+        )
 
     @property
     def full_state_mirror(self) -> np.ndarray:
-        return self.array_one_hot_mirror
+        return np.dstack(
+            [
+                self.array_one_hot_mirror,
+                np.ones((self.board_height, self.board_width)) * self.turn_mirror,
+            ]
+        )
 
     @property
     def odd_moves_number(self) -> bool:
@@ -182,11 +200,7 @@ class Board:
             assert self.array[move.y, move.x] == ConfigConnectN.empty
             self.array[move.y, move.x] = self.turn
             self.update_game_over(last_move_x=move.x, last_move_y=move.y)
-        self.turn = (
-            ConfigConnectN.black
-            if self.turn == ConfigConnectN.white
-            else ConfigConnectN.white
-        )
+        self.turn = self.turn_mirror
 
     def play(
         self,

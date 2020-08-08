@@ -3,7 +3,7 @@ class ConfigGeneral:
     concurrency = True
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     iterations = 10000
-    mcts_iterations = 50
+    mcts_iterations = 250
     minimum_training_size = 5000
 
 
@@ -36,7 +36,7 @@ class ConfigMCTS:
     enable_dirichlet_noise = False  # disabled for now
     dirichlet_noise_value = 0.03
     dirichlet_noise_ratio = 0.25
-    index_move_greedy = 0  # 30 should be the default value, disabled for now
+    index_move_greedy = 15  # 30 should be the default value, disabled for now
 
 
 class ConfigModel:

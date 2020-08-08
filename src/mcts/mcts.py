@@ -138,9 +138,12 @@ class MCTS:
         return value
 
     def backup(self, value: float):
-        for edge in self.path_cache:
+        for edge in reversed(self.path_cache):
             edge.visit_count += 1
-            edge.total_action_value += value
+            if edge.child.board.odd_moves_number:
+                edge.total_action_value += value
+            else:
+                edge.total_action_value -= value
         self.path_cache = []
 
     def search(self, iterations_number: int):
@@ -149,9 +152,7 @@ class MCTS:
             if not leaf_node.board.is_game_over():
                 value = self.evaluate_and_expand(leaf_node)
             else:
-                value = (
-                    leaf_node.board.get_result()
-                )  # TODO: @yohskua verify everything is ok here
+                value = leaf_node.board.get_result()
             self.backup(value)
 
     def play(
