@@ -140,10 +140,8 @@ class MCTS:
     def backup(self, value: float):
         for edge in reversed(self.path_cache):
             edge.visit_count += 1
-            if edge.child.board.odd_moves_number:
-                edge.total_action_value += value
-            else:
-                edge.total_action_value -= value
+            edge.total_action_value += value
+            value = -value
         self.path_cache = []
 
     def search(self, iterations_number: int):
@@ -152,7 +150,9 @@ class MCTS:
             if not leaf_node.board.is_game_over():
                 value = self.evaluate_and_expand(leaf_node)
             else:
-                value = leaf_node.board.get_result()
+                # it's always white's turn so we don't need to get the reward from the environment
+                # instead, we set it to 1
+                value = 1.0
             self.backup(value)
 
     def play(
