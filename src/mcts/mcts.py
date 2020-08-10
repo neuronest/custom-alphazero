@@ -148,12 +148,12 @@ class MCTS:
         for _ in range(iterations_number):
             leaf_node = self.select()
             if not leaf_node.board.is_game_over():
-                value = self.evaluate_and_expand(leaf_node)
+                last_player_value = self.evaluate_and_expand(leaf_node)
             else:
-                # it's always white's turn so we don't need to get the reward from the environment
-                # instead, we set it to 1
-                value = 1.0
-            self.backup(value)
+                # last player value is either 1 or 0
+                # it is assumed player cannot make a move that triggers their own defeat
+                last_player_value = abs(leaf_node.board.get_result())
+            self.backup(last_player_value)
 
     def play(
         self,
