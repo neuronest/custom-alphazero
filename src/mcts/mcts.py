@@ -56,10 +56,10 @@ class UCTNode:
         self.edges = edges
 
     def get_best_edge(self) -> UCTEdge:
-        best_child_index = int(
+        best_edge_index = int(
             np.argmax([edge.upper_confidence_bound() for edge in self.edges])
         )
-        return self.edges[best_child_index]
+        return self.edges[best_edge_index]
 
     def get_best_edge_with_noise(self) -> UCTEdge:
         priors = np.asarray([edge.prior for edge in self.edges])
