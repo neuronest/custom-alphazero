@@ -10,6 +10,7 @@ from src.config import ConfigGeneral, ConfigMCTS
 
 from src.mcts.mcts import MCTS
 from src.serving.factory import train_samples
+from src.visualize_mcts import MctsVisualizer
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -66,7 +67,7 @@ def play_game(
         len(states_game)
     )
     rewards_game = rewards_game[::-1]
-    return states_game, policies_game, rewards_game
+    return states_game, policies_game, rewards_game, [mcts]
 
 
 if __name__ == "__main__":
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
-            states, policies, rewards = play_game(
+            results = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
@@ -110,21 +111,28 @@ if __name__ == "__main__":
             )
             pool.close()
             pool.join()
-            states, policies, rewards = list(zip(*results))
-            states, policies, rewards = (
-                np.vstack(states),
-                np.vstack(policies),
-                np.concatenate(rewards),
-            )
+        states, policies, rewards, mcts_trees = list(zip(*results))
+        states, policies, rewards, mcts_trees = (
+            np.vstack(states),
+            np.vstack(policies),
+            np.concatenate(rewards),
+            np.concatenate(mcts_trees),
+        )
         if any(
             sample is None for sample in [states_batch, policies_batch, rewards_batch]
         ):
-            states_batch, policies_batch, rewards_batch = states, policies, rewards
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
+                states,
+                policies,
+                rewards,
+                mcts_trees,
+            )
         else:
-            states_batch, policies_batch, rewards_batch = (
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
                 np.vstack([states_batch, states]),
                 np.vstack([policies_batch, policies]),
                 np.concatenate([rewards_batch, rewards]),
+                np.concatenate([mcts_trees_batch, mcts_trees]),
             )
         print(
             "Collected {0} samples in {1:.2f} seconds".format(
@@ -146,4 +154,16 @@ if __name__ == "__main__":
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
-            states_batch, policies_batch, rewards_batch = None, None, None
+
+            # pick one mcts randomly in batch and vizualier and save under iteration name
+            MctsVisualizer(
+                mcts_trees_batch[np.random.randint(len(mcts_trees_batch))].root,
+                mcts_name=f"mcts_iteration_{iteration}",
+            ).save_as_gv_and_pdf(directory="mcts_visualization")
+
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
+                None,
+                None,
+                None,
+                None,
+            )
