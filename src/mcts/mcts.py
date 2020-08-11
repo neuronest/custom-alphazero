@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Optional, List, Tuple, Union
+import copy
 
 from src.config import ConfigGeneral, ConfigMCTS
 from src.mcts.utils import normalize_probabilities
@@ -91,16 +92,17 @@ class MCTS:
         self.all_possible_moves = all_possible_moves
         self.concurrency = concurrency
         self.root = self.initialize_root()
+        self.current_root = None
         self.path_cache = []
         self.model = model
 
     def initialize_root(self) -> UCTNode:
-        return UCTNode(edges=[], board=self.board)
+        return UCTNode(edges=[], board=copy.deepcopy(self.board))
 
     def select(self) -> UCTNode:
-        current_node = self.root
+        current_node = self.root if self.current_root is None else self.current_root
         while len(current_node.edges):
-            if current_node is self.root and ConfigMCTS.enable_dirichlet_noise:
+            if ConfigMCTS.enable_dirichlet_noise:
                 best_edge = current_node.get_best_edge_with_noise()
             else:
                 best_edge = current_node.get_best_edge()
@@ -161,7 +163,7 @@ class MCTS:
         return_details: bool = False,
         deterministic: bool = False,
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, Move], Board]:
-        node = self.root
+        node = self.root if self.current_root is None else self.current_root
         if greedy:
             index_max = np.argmax([edge.visit_count for edge in node.edges])
             probabilities = np.zeros(len(node.edges)).astype(float)
@@ -176,7 +178,7 @@ class MCTS:
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
         self.board.play(edge.action, keep_same_player=True)
-        self.root = edge.child
+        self.current_root = edge.child
         if return_details:
             policy = np.zeros(len(self.all_possible_moves))
             legal_moves_indexes = [
