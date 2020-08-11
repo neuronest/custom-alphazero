@@ -1,2 +1,7 @@
 .idea
 env
+*pdf
+*gv
+*pkl
+**__pycache__
+tmux.sh
