@@ -41,7 +41,7 @@ def printer(
 
 def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List]:
     np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
     board = Board()
     mcts = MCTS(
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
-            results = play_game(
+            states, policies, rewards, mcts_trees = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
@@ -111,13 +111,13 @@ if __name__ == "__main__":
             )
             pool.close()
             pool.join()
-        states, policies, rewards, mcts_trees = list(zip(*results))
-        states, policies, rewards, mcts_trees = (
-            np.vstack(states),
-            np.vstack(policies),
-            np.concatenate(rewards),
-            np.concatenate(mcts_trees),
-        )
+            states, policies, rewards, mcts_trees = list(zip(*results))
+            states, policies, rewards, mcts_trees = (
+                np.vstack(states),
+                np.vstack(policies),
+                np.concatenate(rewards),
+                np.concatenate(mcts_trees),
+            )
         if any(
             sample is None for sample in [states_batch, policies_batch, rewards_batch]
         ):
