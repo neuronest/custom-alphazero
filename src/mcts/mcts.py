@@ -27,6 +27,7 @@ class UCTEdge:
         self.prior = prior
         self.visit_count = 0
         self.total_action_value = 0.0
+        self.selected = False
 
     @property
     def siblings(self):
@@ -177,6 +178,7 @@ class MCTS:
             edge = node.edges[np.argmax(probabilities)]
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
+        edge.selected = True
         self.board.play(edge.action, keep_same_player=True)
         self.current_root = edge.child
         if return_details:
