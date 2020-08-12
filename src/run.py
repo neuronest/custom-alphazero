@@ -57,8 +57,13 @@ def play_game(
         states_straight_game.append(state)
         states_mirror_game.append(state_mirror)
         policies_game.append(policy)
-    reward = board.get_result()
-    states_game = states_mirror_game if board.odd_moves_number else states_straight_game
+    # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
+    reward = abs(
+        board.get_result()
+    )  # todo: check this to me there was an error here, reward could be -1
+    states_game = (
+        states_mirror_game if board.odd_moves_number else states_straight_game
+    )  # todo: check this unsure about this
     states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
     # reverse rewards as odd positions as these are views from the opposite player
