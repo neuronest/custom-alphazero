@@ -92,13 +92,14 @@ class MCTS:
         self.board = board
         self.all_possible_moves = all_possible_moves
         self.concurrency = concurrency
-        self.root = self.initialize_root()
+        self.root = self.initialize_root(copy_board=True)
         self.current_root = None
         self.path_cache = []
         self.model = model
 
-    def initialize_root(self) -> UCTNode:
-        return UCTNode(edges=[], board=copy.deepcopy(self.board))
+    def initialize_root(self, copy_board=False) -> UCTNode:
+        board = copy.deepcopy(self.board) if copy_board else self.board
+        return UCTNode(edges=[], board=board)
 
     def select(self) -> UCTNode:
         current_node = self.root if self.current_root is None else self.current_root
@@ -181,6 +182,7 @@ class MCTS:
         edge.selected = True
         self.board.play(edge.action, keep_same_player=True)
         self.current_root = edge.child
+        assert self.board == self.current_root.board
         if return_details:
             policy = np.zeros(len(self.all_possible_moves))
             legal_moves_indexes = [
