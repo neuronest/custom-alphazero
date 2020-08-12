@@ -151,15 +151,14 @@ if __name__ == "__main__":
             )
             if updated:
                 print("The model has been updated")
+                # pick one mcts randomly in batch and vizualier and save under iteration name
+                MctsVisualizer(
+                    mcts_trees_batch[np.random.randint(len(mcts_trees_batch))].root,
+                    mcts_name=f"mcts_iteration_{iteration}",
+                ).save_as_gv_and_pdf(directory="mcts_visualization")
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
-
-            # pick one mcts randomly in batch and vizualier and save under iteration name
-            MctsVisualizer(
-                mcts_trees_batch[np.random.randint(len(mcts_trees_batch))].root,
-                mcts_name=f"mcts_iteration_{iteration}",
-            ).save_as_gv_and_pdf(directory="mcts_visualization")
 
             states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
                 None,
