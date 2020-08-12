@@ -102,9 +102,10 @@ class MCTS:
         return UCTNode(edges=[], board=board)
 
     def select(self) -> UCTNode:
-        current_node = self.root if self.current_root is None else self.current_root
+        current_root = self.root if self.current_root is None else self.current_root
+        current_node = current_root
         while len(current_node.edges):
-            if ConfigMCTS.enable_dirichlet_noise:
+            if current_node is current_root and ConfigMCTS.enable_dirichlet_noise:
                 best_edge = current_node.get_best_edge_with_noise()
             else:
                 best_edge = current_node.get_best_edge()
