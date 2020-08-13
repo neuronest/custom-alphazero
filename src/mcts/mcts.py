@@ -93,7 +93,7 @@ class MCTS:
         self.all_possible_moves = all_possible_moves
         self.concurrency = concurrency
         self.root = self.initialize_root(copy_board=True)
-        self.current_root = None
+        self.current_root = self.root
         self.path_cache = []
         self.model = model
 
@@ -102,10 +102,9 @@ class MCTS:
         return UCTNode(edges=[], board=board)
 
     def select(self) -> UCTNode:
-        current_root = self.root if self.current_root is None else self.current_root
-        current_node = current_root
+        current_node = self.current_root
         while len(current_node.edges):
-            if current_node is current_root and ConfigMCTS.enable_dirichlet_noise:
+            if current_node is self.current_root and ConfigMCTS.enable_dirichlet_noise:
                 best_edge = current_node.get_best_edge_with_noise()
             else:
                 best_edge = current_node.get_best_edge()
