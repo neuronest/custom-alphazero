@@ -149,35 +149,31 @@ class Board:
         if self.game_over:
             return
         x, y = last_move_x, last_move_y
-        if not self.game_over:  # todo: remove useless condition
-            for direction in ConfigConnectN.directions:
-                number_connexions = 1
-                for direction_current in [
-                    direction,
-                    tuple(-elem for elem in direction),
-                ]:
-                    while (
-                        0 <= x + direction_current[0] < self.board_width
-                        and 0 <= y + direction_current[1] < self.board_height
+        for direction in ConfigConnectN.directions:
+            number_connexions = 1
+            for direction_current in [
+                direction,
+                tuple(-elem for elem in direction),
+            ]:
+                while (
+                    0 <= x + direction_current[0] < self.board_width
+                    and 0 <= y + direction_current[1] < self.board_height
+                ):
+                    if (
+                        self.array[y + direction_current[1], x + direction_current[0]]
+                        == self.array[last_move_y, last_move_x]
                     ):
-                        if (
-                            self.array[
-                                y + direction_current[1], x + direction_current[0]
-                            ]
-                            == self.array[last_move_y, last_move_x]
-                        ):
-                            number_connexions += 1
-                            x, y = x + direction_current[0], y + direction_current[1]
-                            if number_connexions >= ConfigConnectN.n:
-                                self.game_over = True
-                                self.is_null = False
-                                return
-                        else:
-                            break
-                    x, y = last_move_x, last_move_y
-        if not self.game_over and not len(
-            self.moves
-        ):  # todo: remove useless condition if not self.game_over
+                        number_connexions += 1
+                        x, y = x + direction_current[0], y + direction_current[1]
+                        if number_connexions >= ConfigConnectN.n:
+                            self.game_over = True
+                            self.is_null = False
+                            return
+                    else:
+                        break
+                x, y = last_move_x, last_move_y
+
+        if not len(self.moves):
             self.game_over = True
             self.is_null = True
 
