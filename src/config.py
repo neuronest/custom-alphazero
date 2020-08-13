@@ -57,7 +57,7 @@ class ConfigModel:
 
 class ConfigServing:
     serving_host = "localhost"
-    serving_port = 5001
+    serving_port = 5000
     serving_address = "http://{0}:{1}".format(serving_host, serving_port)
     inference_path = "/api/inference"
     training_path = "/api/training"
