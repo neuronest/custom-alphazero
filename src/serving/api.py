@@ -4,10 +4,6 @@ from src.config import ConfigServing
 from src.serving.factory import InferenceBatch, init_model
 from src.serving import inference, training
 
-import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 
 def start() -> FastAPI:
     main_app = FastAPI()
