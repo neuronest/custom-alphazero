@@ -48,11 +48,11 @@ def evaluate_against_last_model(
             concurrency=False,
             model=current_model,
         )
-        if game_index % 2 == 0:
+        if game_index % 2 == 0:  # todo: check this this is weird
             mcts_now = mcts_previous_model
             mcts_next = mcts_current_model
         else:
-            mcts_next = mcts_current_model
+            mcts_next = mcts_current_model  # todo: check this this is weird
             mcts_now = mcts_previous_model
         while not board.is_game_over():
             mcts_now.search(ConfigGeneral.mcts_iterations)
@@ -60,10 +60,15 @@ def evaluate_against_last_model(
             _, _, _, move = mcts_now.play(greedy, return_details=True)
             # synchronize the board of the other player
             new_root = None
-            for edge in mcts_next.root.edges:
+            mcts_next_current_root = (
+                mcts_next.root
+                if mcts_next.current_root is None
+                else mcts_next.current_root
+            )
+            for edge in mcts_next_current_root.edges:
                 if board == edge.child.board:
                     new_root = edge.child
-            mcts_next.root = (
+            mcts_next.current_root = (
                 new_root if new_root is not None else mcts_next.initialize_root()
             )
             mcts_now, mcts_next = mcts_next, mcts_now

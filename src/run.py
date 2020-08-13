@@ -10,6 +10,7 @@ from src.config import ConfigGeneral, ConfigMCTS
 
 from src.mcts.mcts import MCTS
 from src.serving.factory import train_samples
+from src.visualize_mcts import MctsVisualizer
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -40,7 +41,7 @@ def printer(
 
 def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
     np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
     board = Board()
     mcts = MCTS(
@@ -56,8 +57,13 @@ def play_game(
         states_straight_game.append(state)
         states_mirror_game.append(state_mirror)
         policies_game.append(policy)
-    reward = board.get_result()
-    states_game = states_mirror_game if board.odd_moves_number else states_straight_game
+    # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
+    reward = abs(
+        board.get_result()
+    )  # todo: check this to me there was an error here, reward could be -1
+    states_game = (
+        states_mirror_game if board.odd_moves_number else states_straight_game
+    )  # todo: check this unsure about this
     states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
     # reverse rewards as odd positions as these are views from the opposite player
@@ -66,7 +72,7 @@ def play_game(
         len(states_game)
     )
     rewards_game = rewards_game[::-1]
-    return states_game, policies_game, rewards_game
+    return states_game, policies_game, rewards_game, [mcts]
 
 
 if __name__ == "__main__":
@@ -92,7 +98,7 @@ if __name__ == "__main__":
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
-            states, policies, rewards = play_game(
+            states, policies, rewards, mcts_trees = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
@@ -110,21 +116,28 @@ if __name__ == "__main__":
             )
             pool.close()
             pool.join()
-            states, policies, rewards = list(zip(*results))
-            states, policies, rewards = (
+            states, policies, rewards, mcts_trees = list(zip(*results))
+            states, policies, rewards, mcts_trees = (
                 np.vstack(states),
                 np.vstack(policies),
                 np.concatenate(rewards),
+                np.concatenate(mcts_trees),
             )
         if any(
             sample is None for sample in [states_batch, policies_batch, rewards_batch]
         ):
-            states_batch, policies_batch, rewards_batch = states, policies, rewards
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
+                states,
+                policies,
+                rewards,
+                mcts_trees,
+            )
         else:
-            states_batch, policies_batch, rewards_batch = (
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
                 np.vstack([states_batch, states]),
                 np.vstack([policies_batch, policies]),
                 np.concatenate([rewards_batch, rewards]),
+                np.concatenate([mcts_trees_batch, mcts_trees]),
             )
         print(
             "Collected {0} samples in {1:.2f} seconds".format(
@@ -143,7 +156,18 @@ if __name__ == "__main__":
             )
             if updated:
                 print("The model has been updated")
+                # pick one mcts randomly in batch and vizualier and save under iteration name
+                MctsVisualizer(
+                    mcts_trees_batch[np.random.randint(len(mcts_trees_batch))].root,
+                    mcts_name=f"mcts_iteration_{iteration}",
+                ).save_as_gv_and_pdf(directory="mcts_visualization")
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
-            states_batch, policies_batch, rewards_batch = None, None, None
+
+            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
+                None,
+                None,
+                None,
+                None,
+            )
