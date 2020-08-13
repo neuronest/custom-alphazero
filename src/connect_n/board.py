@@ -224,12 +224,15 @@ class Board:
         random_move = self.get_random_move()
         return self.play(random_move, on_copy, keep_same_player)
 
-    def get_result(self):
+    def get_result(self, keep_same_player: bool = False):
         if self.is_null is None or not self.game_over:
             return None
         elif self.is_null is True:
             return 0
-        return ConfigConnectN.white if self.odd_moves_number else ConfigConnectN.black
+        if keep_same_player:
+            return ConfigConnectN.white
+        else:
+            return ConfigConnectN.white if self.odd_moves_number else ConfigConnectN.black
 
     def display_ascii(self):
         print(repr(self))

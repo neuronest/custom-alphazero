@@ -43,35 +43,27 @@ def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
     np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
-    board = Board()
     mcts = MCTS(
-        board=board,
+        board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
     )
-    states_straight_game, states_mirror_game, policies_game = [], [], []
-    while not board.is_game_over():
+    states_game, policies_game = [], []
+    while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
-        greedy = board.fullmove_number > ConfigMCTS.index_move_greedy
-        state, state_mirror, policy, last_move = mcts.play(greedy, return_details=True)
-        states_straight_game.append(state)
-        states_mirror_game.append(state_mirror)
+        greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
+        old_state, new_state, policy, last_move = mcts.play(greedy, return_details=True)
+        states_game.append(old_state)
         policies_game.append(policy)
     # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
-    reward = abs(
-        board.get_result()
-    )  # todo: check this to me there was an error here, reward could be -1
-    states_game = (
-        states_mirror_game if board.odd_moves_number else states_straight_game
-    )  # todo: check this unsure about this
+    reward = mcts.board.get_result(keep_same_player=True)
     states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
-    # reverse rewards as odd positions as these are views from the opposite player
-    rewards_game[1::2] = -rewards_game[1::2]
+    # reverse rewards as odd positions starting from the end
+    rewards_game[-2::-2] = -rewards_game[-2::-2]
     rewards_game = rewards_game * ConfigGeneral.discounting_factor ** np.arange(
         len(states_game)
     )
-    rewards_game = rewards_game[::-1]
     return states_game, policies_game, rewards_game, [mcts]
 
 

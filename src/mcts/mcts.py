@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, List, Tuple, Union
-import copy
+from copy import deepcopy
 
 from src.config import ConfigGeneral, ConfigMCTS
 from src.mcts.utils import normalize_probabilities
@@ -89,17 +89,16 @@ class MCTS:
         concurrency: bool,
         model: Optional[PolicyValueModel] = None,
     ) -> None:
-        self.board = board
+        self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
         self.concurrency = concurrency
-        self.root = self.initialize_root(copy_board=True)
+        self.root = self.initialize_root()
         self.current_root = self.root
         self.path_cache = []
         self.model = model
 
-    def initialize_root(self, copy_board=False) -> UCTNode:
-        board = copy.deepcopy(self.board) if copy_board else self.board
-        return UCTNode(edges=[], board=board)
+    def initialize_root(self) -> UCTNode:
+        return UCTNode(edges=[], board=self.board)
 
     def select(self) -> UCTNode:
         current_node = self.current_root
@@ -156,7 +155,7 @@ class MCTS:
             else:
                 # last player value is either 1 or 0
                 # it is assumed player cannot make a move that triggers their own defeat
-                last_player_value = abs(leaf_node.board.get_result())
+                last_player_value = leaf_node.board.get_result(keep_same_player=True)
             self.backup(last_player_value)
 
     def play(
@@ -165,7 +164,7 @@ class MCTS:
         return_details: bool = False,
         deterministic: bool = False,
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, Move], Board]:
-        node = self.root if self.current_root is None else self.current_root
+        node = self.current_root
         if greedy:
             index_max = np.argmax([edge.visit_count for edge in node.edges])
             probabilities = np.zeros(len(node.edges)).astype(float)
@@ -176,11 +175,13 @@ class MCTS:
             ).astype(float)
             probabilities = normalize_probabilities(probabilities)
         if deterministic:
-            edge = node.edges[np.argmax(probabilities)]
+            edge = node.edges[int(np.argmax(probabilities))]
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
         edge.selected = True
+        old_state = self.board.full_state
         self.board.play(edge.action, keep_same_player=True)
+        new_state = self.board.full_state
         self.current_root = edge.child
         assert self.board == self.current_root.board
         if return_details:
@@ -190,8 +191,8 @@ class MCTS:
             ]
             policy[legal_moves_indexes] = probabilities
             return (
-                self.board.full_state,
-                self.board.full_state_mirror,
+                old_state,
+                new_state,
                 policy,
                 edge.action,
             )
