@@ -1,6 +1,6 @@
-import copy
 import numpy as np
-from typing import Optional, List, Union
+from copy import deepcopy
+from typing import Optional, List
 from itertools import product
 
 from src.config import ConfigConnectN
@@ -208,7 +208,7 @@ class Board:
     ) -> "Board":
         if move is None or self.game_over:
             return self
-        board = copy.deepcopy(self) if on_copy else self
+        board = deepcopy(self) if on_copy else self
         board.push(move)
         board.fullmove_number += 1
         if keep_same_player:

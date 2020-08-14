@@ -52,8 +52,8 @@ def play_game(
     while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
         greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
-        old_state, new_state, policy, last_move = mcts.play(greedy, return_details=True)
-        states_game.append(old_state)
+        parent_state, child_state, policy, last_move = mcts.play(greedy, return_details=True)
+        states_game.append(parent_state)
         policies_game.append(policy)
     # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
     reward = mcts.board.get_result(keep_same_player=True)

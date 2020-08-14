@@ -98,7 +98,7 @@ class MCTS:
         self.model = model
 
     def initialize_root(self) -> UCTNode:
-        return UCTNode(edges=[], board=self.board)
+        return UCTNode(edges=[], board=deepcopy(self.board))
 
     def select(self) -> UCTNode:
         current_node = self.current_root
@@ -179,9 +179,9 @@ class MCTS:
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
         edge.selected = True
-        old_state = self.board.full_state
+        parent_state = self.board.full_state
         self.board.play(edge.action, keep_same_player=True)
-        new_state = self.board.full_state
+        child_state = self.board.full_state
         self.current_root = edge.child
         assert self.board == self.current_root.board
         if return_details:
@@ -191,8 +191,8 @@ class MCTS:
             ]
             policy[legal_moves_indexes] = probabilities
             return (
-                old_state,
-                new_state,
+                parent_state,
+                child_state,
                 policy,
                 edge.action,
             )
