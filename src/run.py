@@ -63,7 +63,7 @@ def play_game(
     rewards_game[-2::-2] = -rewards_game[-2::-2]
     rewards_game = rewards_game * ConfigGeneral.discounting_factor ** np.arange(
         len(states_game)
-    )
+    )[::-1]
     return states_game, policies_game, rewards_game, [mcts]
 
 
