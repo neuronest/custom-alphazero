@@ -29,7 +29,7 @@ class MctsVisualizer:
                 edges.append(edge)
         return edges
 
-    def _describe_node(self, node):
+    def _describe_node(self, node, round_value_at=2):
         if id(node) not in self.node_ref_index:
             self.node_ref_index[id(node)] = len(self.node_ref_index)
 
@@ -39,6 +39,11 @@ class MctsVisualizer:
             else ""
         )
         node_description += repr(node.board)
+        node_description += (
+            f"{os.linesep}{os.linesep}V={round(node.evaluated_value, round_value_at)}"
+            if node.evaluated_value is not None
+            else ""
+        )
         return node_description
 
     @staticmethod

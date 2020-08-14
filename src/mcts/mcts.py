@@ -56,6 +56,7 @@ class UCTNode:
     def __init__(self, board: Board, edges: List[UCTEdge]):
         self.board = board
         self.edges = edges
+        self.evaluated_value = None
 
     def get_best_edge(self) -> UCTEdge:
         best_edge_index = int(
@@ -125,6 +126,7 @@ class MCTS:
             probabilities, value = infer_sample(
                 node.board.full_state, concurrency=self.concurrency
             )
+        node.evaluated_value = value
         probabilities = probabilities[
             node.board.legal_moves_mask(self.all_possible_moves)
         ]
