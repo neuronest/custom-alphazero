@@ -39,8 +39,17 @@ class Board:
         self.is_null = None
 
     def __repr__(self):
+        def customize_piece(piece):
+            if piece == ".":
+                # make "." piece wider with spaces on sides to take as much space as other pieces
+                piece = " . "
+            return piece
+
         return "\n".join(
-            ["".join(map(lambda x: self.pieces[x], row)) for row in self.array]
+            [
+                "".join(map(lambda x: customize_piece(self.pieces[x]), row))
+                for row in self.array
+            ]
         )
 
     def __eq__(self, other: "Board"):
