@@ -41,38 +41,30 @@ def printer(
 
 def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
     np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
-    board = Board()
     mcts = MCTS(
-        board=board,
+        board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
     )
-    states_straight_game, states_mirror_game, policies_game = [], [], []
-    while not board.is_game_over():
+    states_game, policies_game = [], []
+    while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
-        greedy = board.fullmove_number > ConfigMCTS.index_move_greedy
-        state, state_mirror, policy, last_move = mcts.play(greedy, return_details=True)
-        states_straight_game.append(state)
-        states_mirror_game.append(state_mirror)
+        greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
+        parent_state, child_state, policy, last_move = mcts.play(greedy, return_details=True)
+        states_game.append(parent_state)
         policies_game.append(policy)
     # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
-    reward = abs(
-        board.get_result()
-    )  # todo: check this to me there was an error here, reward could be -1
-    states_game = (
-        states_mirror_game if board.odd_moves_number else states_straight_game
-    )  # todo: check this unsure about this
+    reward = mcts.board.get_result(keep_same_player=True)
     states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
-    # reverse rewards as odd positions as these are views from the opposite player
-    rewards_game[1::2] = -rewards_game[1::2]
+    # reverse rewards as odd positions starting from the end
+    rewards_game[-2::-2] = -rewards_game[-2::-2]
     rewards_game = rewards_game * ConfigGeneral.discounting_factor ** np.arange(
         len(states_game)
-    )
-    rewards_game = rewards_game[::-1]
-    return states_game, policies_game, rewards_game, [mcts]
+    )[::-1]
+    return states_game, policies_game, rewards_game, mcts
 
 
 if __name__ == "__main__":
@@ -94,7 +86,7 @@ if __name__ == "__main__":
     all_possible_moves = get_all_possible_moves()
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
-    states_batch, policies_batch, rewards_batch = None, None, None
+    states_queue, policies_queue, rewards_queue = None, None, None
     for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
@@ -117,37 +109,45 @@ if __name__ == "__main__":
             pool.close()
             pool.join()
             states, policies, rewards, mcts_trees = list(zip(*results))
-            states, policies, rewards, mcts_trees = (
+            states, policies, rewards = (
                 np.vstack(states),
                 np.vstack(policies),
                 np.concatenate(rewards),
-                np.concatenate(mcts_trees),
             )
+        # we choose a MCST tree randomly to be traced afterwards
+        # each tree results from a fixed state of the neural network, so there is no need to keep them all
+        mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
         if any(
-            sample is None for sample in [states_batch, policies_batch, rewards_batch]
+            sample is None for sample in [states_queue, policies_queue, rewards_queue]
         ):
-            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
+            states_queue, policies_queue, rewards_queue = (
                 states,
                 policies,
                 rewards,
-                mcts_trees,
             )
         else:
-            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
-                np.vstack([states_batch, states]),
-                np.vstack([policies_batch, policies]),
-                np.concatenate([rewards_batch, rewards]),
-                np.concatenate([mcts_trees_batch, mcts_trees]),
+            states_queue, policies_queue, rewards_queue = (
+                np.vstack([states_queue, states]),
+                np.vstack([policies_queue, policies]),
+                np.concatenate([rewards_queue, rewards]),
             )
+        # we remove oldest samples from the queue
+        states_queue, policies_queue, rewards_queue = \
+            states_queue[-ConfigGeneral.samples_queue_size:], \
+            policies_queue[-ConfigGeneral.samples_queue_size:], \
+            rewards_queue[-ConfigGeneral.samples_queue_size:]
         print(
-            "Collected {0} samples in {1:.2f} seconds".format(
-                states.shape[0], time.time() - starting_time
-            )
+            f"Collected {len(states)} samples in {time.time() - starting_time:.2f} seconds\n"
+            f"Now having {len(states_queue)} samples in the queue"
         )
-        print("Now having {} samples in the stack".format(states_batch.shape[0]))
-        if len(states_batch) >= ConfigGeneral.minimum_training_size:
+        if len(states_queue) >= ConfigGeneral.minimum_training_size:
             training_starting_time = time.time()
-            print("Training on {} samples...".format(len(states_batch)))
+            print(
+                f"Training on {ConfigGeneral.minimum_training_size} samples taken randomly from the queue..."
+            )
+            sample_indexes = np.random.choice(len(states_queue), ConfigGeneral.minimum_training_size, replace=False)
+            states_batch, policies_batch, rewards_batch = \
+                states_queue[sample_indexes], policies_queue[sample_indexes], rewards_queue[sample_indexes]
             loss, updated = train_samples(states_batch, [policies_batch, rewards_batch])
             print(
                 "Training took {:.2f} seconds".format(
@@ -156,17 +156,15 @@ if __name__ == "__main__":
             )
             if updated:
                 print("The model has been updated")
-                # pick one mcts randomly in batch and vizualier and save under iteration name
+                # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
                 MctsVisualizer(
-                    mcts_trees_batch[np.random.randint(len(mcts_trees_batch))].root,
+                    mcts_tree.root,
                     mcts_name=f"mcts_iteration_{iteration}",
                 ).save_as_gv_and_pdf(directory="mcts_visualization")
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
-
-            states_batch, policies_batch, rewards_batch, mcts_trees_batch = (
-                None,
+            states_batch, policies_batch, rewards_batch = (
                 None,
                 None,
                 None,

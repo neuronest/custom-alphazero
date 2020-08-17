@@ -1,6 +1,6 @@
-import copy
 import numpy as np
-from typing import Optional, List, Union
+from copy import deepcopy
+from typing import Optional, List
 from itertools import product
 
 from src.config import ConfigConnectN
@@ -208,7 +208,7 @@ class Board:
     ) -> "Board":
         if move is None or self.game_over:
             return self
-        board = copy.deepcopy(self) if on_copy else self
+        board = deepcopy(self) if on_copy else self
         board.push(move)
         board.fullmove_number += 1
         if keep_same_player:
@@ -224,12 +224,15 @@ class Board:
         random_move = self.get_random_move()
         return self.play(random_move, on_copy, keep_same_player)
 
-    def get_result(self):
+    def get_result(self, keep_same_player: bool = False):
         if self.is_null is None or not self.game_over:
             return None
         elif self.is_null is True:
             return 0
-        return ConfigConnectN.white if self.odd_moves_number else ConfigConnectN.black
+        if keep_same_player:
+            return ConfigConnectN.white
+        else:
+            return ConfigConnectN.white if self.odd_moves_number else ConfigConnectN.black
 
     def display_ascii(self):
         print(repr(self))

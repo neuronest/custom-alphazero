@@ -2,6 +2,7 @@ import numpy as np
 
 
 def normalize_probabilities(probabilities: np.ndarray) -> np.ndarray:
+    assert len(probabilities) > 0
     probabilities_sum = probabilities.sum()
     # if there are only zeros, we return an uniform distribution
     if probabilities_sum == 0:

@@ -3,8 +3,9 @@ class ConfigGeneral:
     concurrency = True
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     iterations = 10000
-    mcts_iterations = 250
-    minimum_training_size = 5000
+    mcts_iterations = 75
+    minimum_training_size = 2500
+    samples_queue_size = 10000
 
 
 class ConfigChess:

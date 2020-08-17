@@ -31,65 +31,38 @@ def evaluate_against_last_model(
             previous_model = init_model(os.path.join(path, max_iteration_name))
         except ValueError:
             previous_model = init_model()
-    score_previous_model, score_current_model = 0, 0
-    null_games = 0
+    score_current_model, null_games, index_model = 0, 0, 0
     for game_index in range(ConfigServing.evaluation_games_number):
-        board = Board()
-        all_possible_moves = get_all_possible_moves()
-        mcts_previous_model = MCTS(
-            board=board,
-            all_possible_moves=all_possible_moves,
+        model = current_model if game_index % 2 == 0 else previous_model
+        mcts = MCTS(
+            board=Board(),
+            all_possible_moves=get_all_possible_moves(),
             concurrency=False,
-            model=previous_model,
+            model=model
         )
-        mcts_current_model = MCTS(
-            board=board,
-            all_possible_moves=all_possible_moves,
-            concurrency=False,
-            model=current_model,
-        )
-        if game_index % 2 == 0:  # todo: check this this is weird
-            mcts_now = mcts_previous_model
-            mcts_next = mcts_current_model
-        else:
-            mcts_next = mcts_current_model  # todo: check this this is weird
-            mcts_now = mcts_previous_model
-        while not board.is_game_over():
-            mcts_now.search(ConfigGeneral.mcts_iterations)
-            greedy = board.fullmove_number > ConfigMCTS.index_move_greedy
-            _, _, _, move = mcts_now.play(greedy, return_details=True)
-            # synchronize the board of the other player
-            new_root = None
-            mcts_next_current_root = (
-                mcts_next.root
-                if mcts_next.current_root is None
-                else mcts_next.current_root
-            )
-            for edge in mcts_next_current_root.edges:
-                if board == edge.child.board:
-                    new_root = edge.child
-            mcts_next.current_root = (
-                new_root if new_root is not None else mcts_next.initialize_root()
-            )
-            mcts_now, mcts_next = mcts_next, mcts_now
-        result = board.get_result()
+        while not mcts.board.is_game_over():
+            mcts.search(ConfigGeneral.mcts_iterations)
+            greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
+            _ = mcts.play(greedy)
+            if not mcts.board.is_game_over():
+                model = previous_model if mcts.model is current_model else current_model
+                mcts = MCTS(
+                    board=mcts.board,
+                    all_possible_moves=get_all_possible_moves(),
+                    concurrency=False,
+                    model=model
+                )
+        result = mcts.board.get_result(keep_same_player=True)
         if result:
-            if game_index % 2 == 0:
-                if result == board.white:
-                    score_previous_model += 1
-                else:
-                    score_current_model += 1
-            else:
-                if result == board.white:
-                    score_current_model += 1
-                else:
-                    score_previous_model += 1
+            if current_model is mcts.model:
+                score_current_model += 1
         else:
             null_games += 1
-    if null_games == ConfigServing.evaluation_games_number:
+    try:
+        score = score_current_model / (ConfigServing.evaluation_games_number - null_games)
+        if score >= ConfigServing.replace_min_score:
+            return current_model, score
+        else:
+            return previous_model, score
+    except ZeroDivisionError:
         return previous_model, 0.5
-    score = score_current_model / (ConfigServing.evaluation_games_number - null_games)
-    if score >= ConfigServing.replace_min_score:
-        return current_model, score
-    else:
-        return previous_model, score
