@@ -48,9 +48,14 @@ class MctsVisualizer:
 
     @staticmethod
     def _describe_edge(edge, round_value_at=2):
-        q_value = round(edge.total_action_value / edge.visit_count, round_value_at)
+        uct = round(edge.upper_confidence_bound(), round_value_at)
+        q_value = round(edge.exploitation_term(), round_value_at)
+        u = round(edge.exploration_term(), round_value_at)
+        p = round(edge.prior, round_value_at)
+        n = edge.visit_count
         # .x just when with gravity and for connect_n, find something more general
-        label = f"Q={q_value} P={round(edge.prior, round_value_at)} A={edge.action.x}"
+        label = f"UCT={uct} Q={q_value} U={u}"
+        label += f"{os.linesep} P={p} N={n} A={edge.action.x}"
         color = "red" if edge.selected else "black"
         return {"label": label, "color": color}
 
