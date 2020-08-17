@@ -17,47 +17,6 @@ else:
     raise NotImplementedError
 
 
-def set_mcts_model(
-        mcts: MCTS,
-        previous_model: PolicyValueModel,
-        current_model: PolicyValueModel,
-        game_index: int
-) -> int:
-    """
-    We alternate which model begin first using game_index
-    In addition, we also alternate the model at each move played
-    For example:
-    - game_index 0
-        - move 0
-            -> previous_model
-        - move 1
-            -> current_model
-        ...
-    - game_index 1
-        - move 0
-            -> current_model
-        - move 1
-            -> previous_model
-        ...
-    ...
-    Return 1 if it is current_model that is used, -1 if it is previous_model
-    """
-    if game_index % 2 == 0:
-        if mcts.board.odd_moves_number:
-            mcts.model = current_model
-            return 1
-        else:
-            mcts.model = previous_model
-            return -1
-    else:
-        if mcts.board.odd_moves_number:
-            mcts.model = previous_model
-            return -1
-        else:
-            mcts.model = current_model
-            return 1
-
-
 def evaluate_against_last_model(
     current_model: PolicyValueModel,
     previous_model: Optional[PolicyValueModel] = None,
@@ -74,19 +33,27 @@ def evaluate_against_last_model(
             previous_model = init_model()
     score_current_model, null_games, index_model = 0, 0, 0
     for game_index in range(ConfigServing.evaluation_games_number):
+        model = current_model if game_index % 2 == 0 else previous_model
         mcts = MCTS(
             board=Board(),
             all_possible_moves=get_all_possible_moves(),
             concurrency=False,
+            model=model
         )
         while not mcts.board.is_game_over():
-            index_model = set_mcts_model(mcts, previous_model, current_model, game_index)
             mcts.search(ConfigGeneral.mcts_iterations)
             greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
             _ = mcts.play(greedy)
+            model = previous_model if mcts.model is current_model else current_model
+            mcts = MCTS(
+                board=mcts.board,
+                all_possible_moves=get_all_possible_moves(),
+                concurrency=False,
+                model=model
+            )
         result = mcts.board.get_result(keep_same_player=True)
         if result:
-            if index_model == 1:
+            if current_model is mcts.model:
                 score_current_model += 1
         else:
             null_games += 1
