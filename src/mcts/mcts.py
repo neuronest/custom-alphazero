@@ -151,7 +151,8 @@ class MCTS:
         for _ in range(iterations_number):
             leaf_node = self.select()
             if not leaf_node.board.is_game_over():
-                last_player_value = self.evaluate_and_expand(leaf_node)
+                # we inverse because the board has been mirrored since the last action
+                last_player_value = -self.evaluate_and_expand(leaf_node)
             else:
                 # last player value is either 1 or 0
                 # it is assumed player cannot make a move that triggers their own defeat
