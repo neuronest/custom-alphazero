@@ -1,7 +1,6 @@
 import os
 
 from graphviz import Digraph
-import pickle
 
 
 class MctsVisualizer:
