@@ -44,13 +44,14 @@ def evaluate_against_last_model(
             mcts.search(ConfigGeneral.mcts_iterations)
             greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
             _ = mcts.play(greedy)
-            model = previous_model if mcts.model is current_model else current_model
-            mcts = MCTS(
-                board=mcts.board,
-                all_possible_moves=get_all_possible_moves(),
-                concurrency=False,
-                model=model
-            )
+            if not mcts.board.is_game_over():
+                model = previous_model if mcts.model is current_model else current_model
+                mcts = MCTS(
+                    board=mcts.board,
+                    all_possible_moves=get_all_possible_moves(),
+                    concurrency=False,
+                    model=model
+                )
         result = mcts.board.get_result(keep_same_player=True)
         if result:
             if current_model is mcts.model:
