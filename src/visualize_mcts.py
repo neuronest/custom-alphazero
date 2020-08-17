@@ -74,11 +74,21 @@ class MctsVisualizer:
             )
         return graph_mcts
 
-    def save_as_gv_and_pdf(self, filename=None, directory=None):
+    def save_as_pdf(self, filename=None, directory=None, remove_gv_file=True):
         if directory is not None:
             os.makedirs(directory, exist_ok=True)
+        filename = filename if filename is not None else self.graph_mcts.filename
         # .render outputs 2 files: a .gv file and a .gv.pdf
         self.graph_mcts.render(view=False, filename=filename, directory=directory)
+        if remove_gv_file:
+            MctsVisualizer._remove_gv(filename, directory=directory)
+
+    @staticmethod
+    def _remove_gv(filename, directory=None):
+        if directory is None:
+            os.remove(filename)
+        else:
+            os.remove(os.path.join(directory, filename))
 
     def show(self, filename=None, directory=None):
         """Save the source to file and open the rendered result in a viewer depending on platform

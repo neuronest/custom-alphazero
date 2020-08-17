@@ -160,7 +160,7 @@ if __name__ == "__main__":
                 MctsVisualizer(
                     mcts_tree.root,
                     mcts_name=f"mcts_iteration_{iteration}",
-                ).save_as_gv_and_pdf(directory="mcts_visualization")
+                ).save_as_pdf(directory="mcts_visualization")
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
