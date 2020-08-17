@@ -39,7 +39,7 @@ class UCTEdge:
         except ZeroDivisionError:
             return 0.0
 
-    def exploration_term(self, override_prior: Optional[float]) -> float:
+    def exploration_term(self, override_prior: Optional[float] = None) -> float:
         prior = override_prior if override_prior is not None else self.prior
         return (
             ConfigMCTS.exploration_constant
