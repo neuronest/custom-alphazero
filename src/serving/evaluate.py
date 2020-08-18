@@ -24,7 +24,7 @@ def evaluate_against_last_model(
     previous_model: Optional[PolicyValueModel] = None,
     run_path: Optional[str] = None,
     evaluate_with_mcts: bool = True,
-    deterministic: bool = False
+    deterministic: bool = False,
 ) -> Tuple[PolicyValueModel, float]:
     if previous_model is None:
         assert run_path is not None
@@ -35,7 +35,7 @@ def evaluate_against_last_model(
             previous_model = init_model(os.path.join(run_path, max_iteration_name))
         except ValueError:
             previous_model = init_model()
-    score_current_model, null_games, index_model = 0, 0, 0
+    score_current_model, null_games = 0, 0
     for game_index in range(ConfigServing.evaluation_games_number):
         model = current_model if game_index % 2 == 0 else previous_model
         if not evaluate_with_mcts:
@@ -59,19 +59,21 @@ def evaluate_against_last_model(
                 board=Board(),
                 all_possible_moves=get_all_possible_moves(),
                 concurrency=False,
-                model=model
+                model=model,
             )
             while not mcts.board.is_game_over():
                 mcts.search(ConfigGeneral.mcts_iterations)
                 greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
                 _ = mcts.play(greedy, deterministic=deterministic)
                 if not mcts.board.is_game_over():
-                    model = previous_model if mcts.model is current_model else current_model
+                    model = (
+                        previous_model if mcts.model is current_model else current_model
+                    )
                     mcts = MCTS(
                         board=mcts.board,
                         all_possible_moves=get_all_possible_moves(),
                         concurrency=False,
-                        model=model
+                        model=model,
                     )
             board = mcts.board
         result = board.get_result(keep_same_player=True)
@@ -81,7 +83,9 @@ def evaluate_against_last_model(
         else:
             null_games += 1
     try:
-        score = score_current_model / (ConfigServing.evaluation_games_number - null_games)
+        score = score_current_model / (
+            ConfigServing.evaluation_games_number - null_games
+        )
         if score >= ConfigServing.replace_min_score:
             return current_model, score
         else:

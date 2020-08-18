@@ -54,7 +54,9 @@ def play_game(
     while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
         greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
-        parent_state, child_state, policy, last_move = mcts.play(greedy, return_details=True)
+        parent_state, child_state, policy, last_move = mcts.play(
+            greedy, return_details=True
+        )
         states_game.append(parent_state)
         policies_game.append(policy)
     # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
@@ -63,9 +65,10 @@ def play_game(
     rewards_game = np.repeat(reward, len(states_game))
     # reverse rewards as odd positions starting from the end
     rewards_game[-2::-2] = -rewards_game[-2::-2]
-    rewards_game = rewards_game * ConfigGeneral.discounting_factor ** np.arange(
-        len(states_game)
-    )[::-1]
+    rewards_game = (
+        rewards_game
+        * ConfigGeneral.discounting_factor ** np.arange(len(states_game))[::-1]
+    )
     return states_game, policies_game, rewards_game, mcts
 
 
@@ -79,9 +82,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     mono_process = args.mono_process
     run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    print(
-        f"Starting run with id={run_id}"
-    )
+    print(f"Starting run with id={run_id}")
     if not mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
@@ -138,10 +139,11 @@ if __name__ == "__main__":
                 np.concatenate([rewards_queue, rewards]),
             )
         # we remove oldest samples from the queue
-        states_queue, policies_queue, rewards_queue = \
-            states_queue[-ConfigGeneral.samples_queue_size:], \
-            policies_queue[-ConfigGeneral.samples_queue_size:], \
-            rewards_queue[-ConfigGeneral.samples_queue_size:]
+        states_queue, policies_queue, rewards_queue = (
+            states_queue[-ConfigGeneral.samples_queue_size :],
+            policies_queue[-ConfigGeneral.samples_queue_size :],
+            rewards_queue[-ConfigGeneral.samples_queue_size :],
+        )
         print(
             f"Collected {len(states)} samples in {time.time() - starting_time:.2f} seconds\n"
             f"Now having {len(states_queue)} samples in the queue"
@@ -151,15 +153,23 @@ if __name__ == "__main__":
             print(
                 f"Training on {ConfigGeneral.minimum_training_size} samples taken randomly from the queue..."
             )
-            sample_indexes = np.random.choice(len(states_queue), ConfigGeneral.minimum_training_size, replace=False)
-            states_batch, policies_batch, rewards_batch = \
-                states_queue[sample_indexes], policies_queue[sample_indexes], rewards_queue[sample_indexes]
-            loss, updated, iteration = train_samples(run_id, states_batch, [policies_batch, rewards_batch])
-            print(
-                f"Training took {time.time() - training_starting_time:.2f} seconds"
+            sample_indexes = np.random.choice(
+                len(states_queue), ConfigGeneral.minimum_training_size, replace=False
             )
+            states_batch, policies_batch, rewards_batch = (
+                states_queue[sample_indexes],
+                policies_queue[sample_indexes],
+                rewards_queue[sample_indexes],
+            )
+            loss, updated, iteration = train_samples(
+                run_id, states_batch, [policies_batch, rewards_batch]
+            )
+            print(f"Training took {time.time() - training_starting_time:.2f} seconds")
             iteration_path = os.path.join(
-                ConfigPath.results_path, ConfigGeneral.game, run_id, f"iteration_{iteration}"
+                ConfigPath.results_path,
+                ConfigGeneral.game,
+                run_id,
+                f"iteration_{iteration}",
             )
             if updated:
                 print("The model has been updated")
@@ -168,8 +178,7 @@ if __name__ == "__main__":
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
             MctsVisualizer(
-                mcts_tree.root,
-                mcts_name=f"mcts_iteration_{iteration}",
+                mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}",
             ).save_as_pdf(directory=iteration_path)
             states_batch, policies_batch, rewards_batch = (
                 None,
