@@ -72,6 +72,23 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
+def train_on_queue(run_id, states_queue, policies_queue, rewards_queue, minimum_training_size):
+    training_starting_time = time.time()
+    print(
+        f"Training on {minimum_training_size} samples taken randomly from the queue..."
+    )
+    sample_indexes = np.random.choice(
+        len(states_queue), minimum_training_size, replace=False
+    )
+    states_batch, policies_batch, rewards_batch = (
+        states_queue[sample_indexes],
+        policies_queue[sample_indexes],
+        rewards_queue[sample_indexes],
+    )
+    loss, updated, iteration = train_samples(run_id, states_batch, [policies_batch, rewards_batch])
+    print("Training took {:.2f} seconds".format(time.time() - training_starting_time))
+    return loss, updated, iteration
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -152,22 +169,13 @@ if __name__ == "__main__":
             f"Now having {len(states_queue)} samples in the queue and {run_new_experience} new experience samples"
         )
         if run_new_experience >= ConfigGeneral.minimum_training_size:
-            training_starting_time = time.time()
-            print(
-                f"Training on {ConfigGeneral.minimum_training_size} samples taken randomly from the queue..."
+            loss, updated, iteration = train_on_queue(
+                run_id,
+                states_queue,
+                policies_queue,
+                rewards_queue,
+                ConfigGeneral.minimum_training_size,
             )
-            sample_indexes = np.random.choice(
-                len(states_queue), ConfigGeneral.minimum_training_size, replace=False
-            )
-            states_batch, policies_batch, rewards_batch = (
-                states_queue[sample_indexes],
-                policies_queue[sample_indexes],
-                rewards_queue[sample_indexes],
-            )
-            loss, updated, iteration = train_samples(
-                run_id, states_batch, [policies_batch, rewards_batch]
-            )
-            print(f"Training took {time.time() - training_starting_time:.2f} seconds")
             iteration_path = os.path.join(
                 ConfigPath.results_path,
                 ConfigGeneral.game,
