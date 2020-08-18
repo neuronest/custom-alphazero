@@ -114,9 +114,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
         response_content = json.loads(response.content)
     except json.decoder.JSONDecodeError:
         print(
-            "Internal inference routine error:\nuid:{0}\nstate:{1}".format(
-                data["uid"], data["state"]
-            )
+            f"Internal inference routine error:\nuid:{data['uid']}\nstate:{data['state']}"
         )
         response_content = {
             "probabilities": [0.0] * len(get_all_possible_moves()),

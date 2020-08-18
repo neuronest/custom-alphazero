@@ -79,6 +79,9 @@ if __name__ == "__main__":
     run_id = "".join(
         [token for token in str(datetime.today().replace(microsecond=0)) if token.isdigit()]
     )
+    print(
+        f"Starting run with id={run_id}"
+    )
     if not mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
@@ -153,9 +156,8 @@ if __name__ == "__main__":
                 states_queue[sample_indexes], policies_queue[sample_indexes], rewards_queue[sample_indexes]
             loss, updated, iteration = train_samples(run_id, states_batch, [policies_batch, rewards_batch])
             print(
-                "Training took {:.2f} seconds".format(
-                    time.time() - training_starting_time
-                )
+                f"Training took {time.time() - training_starting_time:.2f} seconds"
+            )
             iteration_path = os.path.join(
                 ConfigPath.results_path, ConfigGeneral.game, run_id, f"iteration_{iteration}"
             )
@@ -163,7 +165,7 @@ if __name__ == "__main__":
                 print("The model has been updated")
             else:
                 print("The model has not been updated")
-            print("Current loss: {0:.5f}".format(loss))
+            print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
             MctsVisualizer(
                 mcts_tree.root,
