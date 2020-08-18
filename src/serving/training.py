@@ -55,7 +55,7 @@ async def post(
         best_model, score = evaluate_against_last_model(
             current_model=model,
             run_path=run_path,
-            evaluate_with_mcts=request.app.state.evaluate_with_mcts,
+            evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
         )
         if score >= ConfigServing.replace_min_score:
             print("The current model is better, saving...")
