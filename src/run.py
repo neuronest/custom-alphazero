@@ -78,9 +78,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     mono_process = args.mono_process
-    run_id = "".join(
-        [token for token in str(datetime.today().replace(microsecond=0)) if token.isdigit()]
-    )
+    run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     print(
         f"Starting run with id={run_id}"
     )
