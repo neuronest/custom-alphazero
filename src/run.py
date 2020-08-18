@@ -72,6 +72,28 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
+def train_on_queue(
+    run_id, states_queue, policies_queue, rewards_queue, minimum_training_size
+):
+    training_starting_time = time.time()
+    print(
+        f"Training on {minimum_training_size} samples taken randomly from the queue..."
+    )
+    sample_indexes = np.random.choice(
+        len(states_queue), minimum_training_size, replace=False
+    )
+    states_batch, policies_batch, rewards_batch = (
+        states_queue[sample_indexes],
+        policies_queue[sample_indexes],
+        rewards_queue[sample_indexes],
+    )
+    loss, updated, iteration = train_samples(
+        run_id, states_batch, [policies_batch, rewards_batch]
+    )
+    print(f"Training took {time.time() - training_starting_time:.2f} seconds")
+    return loss, updated, iteration
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -94,6 +116,7 @@ if __name__ == "__main__":
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
     states_queue, policies_queue, rewards_queue = None, None, None
+    latest_experience_amount = 0
     for _ in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
@@ -124,6 +147,7 @@ if __name__ == "__main__":
             # we choose a MCST tree randomly to be traced afterwards
             # each tree results from a fixed state of the neural network, so there is no need to keep them all
             mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
+        latest_experience_amount += len(states)
         if any(
             sample is None for sample in [states_queue, policies_queue, rewards_queue]
         ):
@@ -146,31 +170,26 @@ if __name__ == "__main__":
         )
         print(
             f"Collected {len(states)} samples in {time.time() - starting_time:.2f} seconds\n"
-            f"Now having {len(states_queue)} samples in the queue"
+            f"Now having {len(states_queue)} samples in the queue and {latest_experience_amount} new experience samples"
         )
-        if len(states_queue) >= ConfigGeneral.minimum_training_size:
-            training_starting_time = time.time()
-            print(
-                f"Training on {ConfigGeneral.minimum_training_size} samples taken randomly from the queue..."
+        if (
+            len(states_queue) >= ConfigGeneral.minimum_training_size
+            and latest_experience_amount >= ConfigGeneral.minimum_delta_size
+        ):
+            loss, updated, iteration = train_on_queue(
+                run_id,
+                states_queue,
+                policies_queue,
+                rewards_queue,
+                ConfigGeneral.minimum_training_size,
             )
-            sample_indexes = np.random.choice(
-                len(states_queue), ConfigGeneral.minimum_training_size, replace=False
-            )
-            states_batch, policies_batch, rewards_batch = (
-                states_queue[sample_indexes],
-                policies_queue[sample_indexes],
-                rewards_queue[sample_indexes],
-            )
-            loss, updated, iteration = train_samples(
-                run_id, states_batch, [policies_batch, rewards_batch]
-            )
-            print(f"Training took {time.time() - training_starting_time:.2f} seconds")
             iteration_path = os.path.join(
                 ConfigPath.results_path,
                 ConfigGeneral.game,
                 run_id,
                 f"iteration_{iteration}",
             )
+            latest_experience_amount = 0
             if updated:
                 print("The model has been updated")
             else:
