@@ -42,7 +42,7 @@ def printer(
 def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
-    np.random.seed(int(process_id * time.time()) % (2 ** 32 - 1))
+    np.random.seed(int((process_id + 1) * time.time()) % (2 ** 32 - 1))
     mcts = MCTS(
         board=Board(),
         all_possible_moves=all_possible_moves,
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                     all_possible_moves=all_possible_moves,
                     mcts_iterations=ConfigGeneral.mcts_iterations,
                 ),
-                range(1, processes + 1),
+                range(processes),
             )
             pool.close()
             pool.join()
