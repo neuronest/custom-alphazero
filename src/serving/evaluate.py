@@ -19,6 +19,15 @@ else:
     raise NotImplementedError
 
 
+def get_last_iteration_name(
+    run_path: str, prefix: str = "iteration_", sep: str = "_"
+) -> str:
+    return max(
+        filter(lambda x: x.startswith(prefix), os.listdir(run_path)),
+        key=lambda x: int(x.split(sep)[-1]),
+    )
+
+
 def evaluate_against_last_model(
     current_model: PolicyValueModel,
     previous_model: Optional[PolicyValueModel] = None,
@@ -29,9 +38,7 @@ def evaluate_against_last_model(
     if previous_model is None:
         assert run_path is not None
         try:
-            max_iteration_name = max(
-                os.listdir(run_path), key=lambda x: int(x.split("_")[-1])
-            )
+            max_iteration_name = get_last_iteration_name(run_path)
             previous_model = init_model(os.path.join(run_path, max_iteration_name))
         except ValueError:
             previous_model = init_model()
