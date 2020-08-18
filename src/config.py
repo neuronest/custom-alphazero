@@ -5,6 +5,7 @@ class ConfigGeneral:
     iterations = 10000
     mcts_iterations = 75
     minimum_training_size = 2500
+    minimum_delta_size = 1000
     samples_queue_size = 10000
 
 
