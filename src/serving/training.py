@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from fastapi import APIRouter, Body, Request
 
-from src.config import ConfigGeneral, ConfigServing
+from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import train
 from src.serving.schema import ModelTrainingInputs, ModelTrainingOutputs
 from src.serving.example import TrainingExample
@@ -17,18 +17,17 @@ async def post(
     request: Request,
     inputs: ModelTrainingInputs = Body(..., example=TrainingExample.inputs),
 ):
-    os.makedirs(
-        os.path.join(ConfigServing.results_path, ConfigGeneral.game), exist_ok=True
-    )
-    os.makedirs(ConfigServing.logs_path, exist_ok=True)
-    writer = tf.summary.create_file_writer(
-        os.path.join(ConfigServing.logs_path, ConfigGeneral.game)
-    )
     model = request.app.state.model
     data = inputs.dict()
     states = np.asarray(data.pop("states"))
     policies = np.asarray(data.pop("policies"))
     values = np.asarray(data.pop("values"))
+    run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+    iteration_path = os.path.join(run_path, f"iteration_{request.app.state.iteration}")
+    tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
+    os.makedirs(iteration_path, exist_ok=True)
+    os.makedirs(tensorboard_path, exist_ok=True)
+    writer = tf.summary.create_file_writer(tensorboard_path)
     loss = train(
         model,
         states,
@@ -51,22 +50,17 @@ async def post(
             "learning rate", model.get_learning_rate(), step=request.app.state.iteration
         )
         writer.flush()
-    outputs_path = os.path.join(
-        ConfigServing.results_path,
-        ConfigGeneral.game,
-        "iteration_{}".format(request.app.state.iteration),
-    )
     if request.app.state.iteration % ConfigServing.model_checkpoint_frequency == 0:
         best_model, score = evaluate_against_last_model(
             current_model=model,
-            path=os.path.join(ConfigServing.results_path, ConfigGeneral.game),
+            run_path=run_path,
+            evaluate_with_mcts=request.app.state.evaluate_with_mcts,
         )
-        os.makedirs(outputs_path, exist_ok=True)
         if score >= ConfigServing.replace_min_score:
             print("The current model is better, saving...")
         else:
             print("The previous model was better, saving...")
-        best_model.save_with_meta(outputs_path)
+        best_model.save_with_meta(iteration_path)
         with writer.as_default():
             tf.summary.scalar(
                 "last model winning score",
@@ -77,12 +71,11 @@ async def post(
             writer.flush()
         response["updated"] = score >= ConfigServing.replace_min_score
     if request.app.state.iteration % ConfigServing.samples_checkpoint_frequency == 0:
-        os.makedirs(outputs_path, exist_ok=True)
         print("Saving current samples...")
-        for sample, sample_type in zip(
-            [states, policies, values], ["states", "policies", "values"]
-        ):
-            np.save(
-                os.path.join(outputs_path, sample_type), sample,
-            )
+        np.savez(
+            os.path.join(iteration_path, ConfigPath.samples_name),
+            states=states,
+            policies=policies,
+            values=values,
+        )
     return response

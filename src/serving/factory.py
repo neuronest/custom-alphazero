@@ -5,7 +5,7 @@ import asyncio
 import numpy as np
 from typing import Tuple, List, Optional
 
-from src.config import ConfigGeneral, ConfigServing
+from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import PolicyValueModel
 
 if ConfigGeneral.game == "chess":
@@ -95,7 +95,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     }
     try:
         response = requests.post(
-            url=ConfigServing.serving_address + ConfigServing.inference_path,
+            url=ConfigServing.serving_address + ConfigPath.inference_path,
             data=json.dumps(data),
             headers=headers,
             timeout=ConfigServing.inference_timeout,
@@ -106,7 +106,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
         )
         data["concurrency"] = False
         response = requests.post(
-            url=ConfigServing.serving_address + ConfigServing.inference_path,
+            url=ConfigServing.serving_address + ConfigPath.inference_path,
             data=json.dumps(data),
             headers=headers,
         )
@@ -134,7 +134,7 @@ def train_samples(states: np.ndarray, labels: List[np.ndarray]) -> Tuple[float, 
         "values": values.tolist(),
     }
     response = requests.post(
-        url=ConfigServing.serving_address + ConfigServing.training_path,
+        url=ConfigServing.serving_address + ConfigPath.training_path,
         data=json.dumps(data),
         headers=headers,
     )

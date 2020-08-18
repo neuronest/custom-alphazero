@@ -6,7 +6,7 @@ import argparse
 from typing import List, Tuple
 from functools import partial
 
-from src.config import ConfigGeneral, ConfigMCTS
+from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 
 from src.mcts.mcts import MCTS
 from src.serving.factory import train_samples
@@ -153,6 +153,8 @@ if __name__ == "__main__":
                 "Training took {:.2f} seconds".format(
                     time.time() - training_starting_time
                 )
+            iteration_path = os.path.join(
+                ConfigPath.results_path, ConfigGeneral.game, run_id, f"iteration_{iteration}"
             )
             if updated:
                 print("The model has been updated")
@@ -164,6 +166,11 @@ if __name__ == "__main__":
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
+            # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
+            MctsVisualizer(
+                mcts_tree.root,
+                mcts_name=f"mcts_iteration_{iteration}",
+            ).save_as_pdf(directory=iteration_path)
             states_batch, policies_batch, rewards_batch = (
                 None,
                 None,
