@@ -37,7 +37,7 @@ class MctsVisualizer:
             if self.show_node_index
             else ""
         )
-        node_description += repr(node.board)
+        node_description += node.board.repr_graphviz()
         node_description += (
             f"{os.linesep}{os.linesep}V={round(node.evaluated_value, round_value_at)}"
             if node.evaluated_value is not None
