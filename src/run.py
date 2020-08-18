@@ -73,8 +73,12 @@ def play_game(
 
 
 def train_on_queue(
-    run_id, states_queue, policies_queue, rewards_queue, minimum_training_size
-):
+    run_id: str,
+    states_queue: np.ndarray,
+    policies_queue: np.ndarray,
+    rewards_queue: np.ndarray,
+    minimum_training_size: int,
+) -> Tuple[float, bool, int]:
     training_starting_time = time.time()
     print(
         f"Training on {minimum_training_size} samples taken randomly from the queue..."
