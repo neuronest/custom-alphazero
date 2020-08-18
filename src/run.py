@@ -90,7 +90,7 @@ def train_on_queue(
     loss, updated, iteration = train_samples(
         run_id, states_batch, [policies_batch, rewards_batch]
     )
-    print("Training took {:.2f} seconds".format(time.time() - training_starting_time))
+    print(f"Training took {time.time() - training_starting_time:.2f} seconds")
     return loss, updated, iteration
 
 
