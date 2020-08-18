@@ -1,8 +1,9 @@
 import os
 import numpy as np
+from functools import partial
 from typing import Tuple, Optional
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigServing
+from src.config import ConfigGeneral, ConfigMCTS, ConfigServing, ConfigModel
 from src.mcts.mcts import MCTS
 from src.model.tensorflow.model import PolicyValueModel
 from src.serving.factory import init_model
@@ -20,10 +21,20 @@ else:
 
 
 def get_last_iteration_name(
-    run_path: str, prefix: str = "iteration_", sep: str = "_"
+    run_path: str, prefix: str = "iteration", sep: str = "_"
 ) -> str:
+    def _is_correct_iteration_directory(
+        directory: str, run_path: str, prefix: str
+    ) -> bool:
+        return directory.startswith(prefix) and os.path.exists(
+            os.path.join(run_path, directory, ConfigModel.model_meta)
+        )
+
     return max(
-        filter(lambda x: x.startswith(prefix), os.listdir(run_path)),
+        filter(
+            partial(_is_correct_iteration_directory, run_path=run_path, prefix=prefix),
+            os.listdir(run_path),
+        ),
         key=lambda x: int(x.split(sep)[-1]),
     )
 
