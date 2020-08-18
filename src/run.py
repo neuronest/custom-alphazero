@@ -1,10 +1,12 @@
 import multiprocessing
+import os
 import numpy as np
 import platform
 import time
 import argparse
 from typing import List, Tuple
 from functools import partial
+from datetime import datetime
 
 from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 
@@ -93,10 +95,10 @@ if __name__ == "__main__":
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
     states_queue, policies_queue, rewards_queue = None, None, None
-    for iteration in range(ConfigGeneral.iterations):
+    for _ in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
-            states, policies, rewards, mcts_trees = play_game(
+            states, policies, rewards, mcts_tree = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
                 mcts_iterations=ConfigGeneral.mcts_iterations,
@@ -120,9 +122,9 @@ if __name__ == "__main__":
                 np.vstack(policies),
                 np.concatenate(rewards),
             )
-        # we choose a MCST tree randomly to be traced afterwards
-        # each tree results from a fixed state of the neural network, so there is no need to keep them all
-        mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
+            # we choose a MCST tree randomly to be traced afterwards
+            # each tree results from a fixed state of the neural network, so there is no need to keep them all
+            mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
         if any(
             sample is None for sample in [states_queue, policies_queue, rewards_queue]
         ):
