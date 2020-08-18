@@ -72,7 +72,9 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
-def train_on_queue(run_id, states_queue, policies_queue, rewards_queue, minimum_training_size):
+def train_on_queue(
+    run_id, states_queue, policies_queue, rewards_queue, minimum_training_size
+):
     training_starting_time = time.time()
     print(
         f"Training on {minimum_training_size} samples taken randomly from the queue..."
@@ -85,9 +87,12 @@ def train_on_queue(run_id, states_queue, policies_queue, rewards_queue, minimum_
         policies_queue[sample_indexes],
         rewards_queue[sample_indexes],
     )
-    loss, updated, iteration = train_samples(run_id, states_batch, [policies_batch, rewards_batch])
+    loss, updated, iteration = train_samples(
+        run_id, states_batch, [policies_batch, rewards_batch]
+    )
     print("Training took {:.2f} seconds".format(time.time() - training_starting_time))
     return loss, updated, iteration
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -111,9 +116,8 @@ if __name__ == "__main__":
     action_space = len(all_possible_moves)
     input_dim = Board().full_state.shape
     states_queue, policies_queue, rewards_queue = None, None, None
-    for _ in range(ConfigGeneral.iterations):
     run_new_experience = 0
-    for iteration in range(ConfigGeneral.iterations):
+    for _ in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
             states, policies, rewards, mcts_tree = play_game(
