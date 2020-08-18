@@ -95,6 +95,8 @@ if __name__ == "__main__":
     input_dim = Board().full_state.shape
     states_queue, policies_queue, rewards_queue = None, None, None
     for _ in range(ConfigGeneral.iterations):
+    run_new_experience = 0
+    for iteration in range(ConfigGeneral.iterations):
         starting_time = time.time()
         if mono_process:
             states, policies, rewards, mcts_tree = play_game(
@@ -124,6 +126,7 @@ if __name__ == "__main__":
             # we choose a MCST tree randomly to be traced afterwards
             # each tree results from a fixed state of the neural network, so there is no need to keep them all
             mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
+        run_new_experience += len(states)
         if any(
             sample is None for sample in [states_queue, policies_queue, rewards_queue]
         ):
@@ -146,9 +149,9 @@ if __name__ == "__main__":
         )
         print(
             f"Collected {len(states)} samples in {time.time() - starting_time:.2f} seconds\n"
-            f"Now having {len(states_queue)} samples in the queue"
+            f"Now having {len(states_queue)} samples in the queue and {run_new_experience} new experience samples"
         )
-        if len(states_queue) >= ConfigGeneral.minimum_training_size:
+        if run_new_experience >= ConfigGeneral.minimum_training_size:
             training_starting_time = time.time()
             print(
                 f"Training on {ConfigGeneral.minimum_training_size} samples taken randomly from the queue..."
@@ -171,6 +174,8 @@ if __name__ == "__main__":
                 run_id,
                 f"iteration_{iteration}",
             )
+            run_new_experience = 0
+
             if updated:
                 print("The model has been updated")
             else:
