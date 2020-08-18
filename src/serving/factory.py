@@ -5,7 +5,7 @@ import asyncio
 import numpy as np
 from typing import Tuple, List, Optional
 
-from src.config import ConfigGeneral, ConfigServing
+from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import PolicyValueModel
 
 if ConfigGeneral.game == "chess":
@@ -95,7 +95,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     }
     try:
         response = requests.post(
-            url=ConfigServing.serving_address + ConfigServing.inference_path,
+            url=ConfigServing.serving_address + ConfigPath.inference_path,
             data=json.dumps(data),
             headers=headers,
             timeout=ConfigServing.inference_timeout,
@@ -106,7 +106,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
         )
         data["concurrency"] = False
         response = requests.post(
-            url=ConfigServing.serving_address + ConfigServing.inference_path,
+            url=ConfigServing.serving_address + ConfigPath.inference_path,
             data=json.dumps(data),
             headers=headers,
         )
@@ -114,9 +114,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
         response_content = json.loads(response.content)
     except json.decoder.JSONDecodeError:
         print(
-            "Internal inference routine error:\nuid:{0}\nstate:{1}".format(
-                data["uid"], data["state"]
-            )
+            f"Internal inference routine error:\nuid:{data['uid']}\nstate:{data['state']}"
         )
         response_content = {
             "probabilities": [0.0] * len(get_all_possible_moves()),
@@ -125,18 +123,25 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     return np.asarray(response_content["probabilities"]), response_content["value"]
 
 
-def train_samples(states: np.ndarray, labels: List[np.ndarray]) -> Tuple[float, bool]:
+def train_samples(
+    run_id: str, states: np.ndarray, labels: List[np.ndarray]
+) -> Tuple[float, bool, int]:
     headers = {"content-type": "application/octet-stream"}
     policies, values = labels
     data = {
+        "run_id": run_id,
         "states": states.tolist(),
         "policies": policies.tolist(),
         "values": values.tolist(),
     }
     response = requests.post(
-        url=ConfigServing.serving_address + ConfigServing.training_path,
+        url=ConfigServing.serving_address + ConfigPath.training_path,
         data=json.dumps(data),
         headers=headers,
     )
     response_content = json.loads(response.content)
-    return response_content["loss"], response_content["updated"]
+    return (
+        response_content["loss"],
+        response_content["updated"],
+        response_content["iteration"],
+    )

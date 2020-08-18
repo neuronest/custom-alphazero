@@ -14,6 +14,7 @@ class ModelInferenceOutputs(BaseModel):
 
 
 class ModelTrainingInputs(BaseModel):
+    run_id: str = Field(..., title="Identifier of the run, usually a timestamp")
     states: List[List[List[List[float]]]] = Field(..., title="Board state samples")
     policies: List[List[float]] = Field(..., title="Policies samples")
     values: List[float] = Field(..., title="Values samples")
@@ -22,3 +23,4 @@ class ModelTrainingInputs(BaseModel):
 class ModelTrainingOutputs(BaseModel):
     loss: float = Field(..., title="Loss value on the current batch")
     updated: bool = Field(..., title="Whether of not the model has been updated")
+    iteration: int = Field(..., title="Model iteration")
