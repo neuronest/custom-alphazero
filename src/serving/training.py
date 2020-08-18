@@ -36,13 +36,13 @@ async def post(
         epochs=ConfigServing.training_epochs,
         batch_size=ConfigServing.batch_size,
     )
-    request.app.state.iteration += 1
-    request.app.state.number_samples += len(states)
     response = {
         "loss": loss,
         "updated": False,
         "iteration": request.app.state.iteration,
     }
+    request.app.state.iteration += 1
+    request.app.state.number_samples += len(states)
     with writer.as_default():
         tf.summary.scalar("loss", loss, step=request.app.state.iteration)
         tf.summary.scalar(
