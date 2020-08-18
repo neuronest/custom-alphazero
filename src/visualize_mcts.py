@@ -53,8 +53,9 @@ class MctsVisualizer:
         p = round(edge.prior, round_value_at)
         n = edge.visit_count
         # .x just when with gravity and for connect_n, find something more general
-        label = f"UCT={uct} Q={q_value} U={u}"
-        label += f"{os.linesep} P={p} N={n} A={edge.action.x}"
+        label = (
+            f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} A={edge.action.x}"
+        )
         color = "red" if edge.selected else "black"
         return {"label": label, "color": color}
 
