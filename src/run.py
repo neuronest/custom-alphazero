@@ -187,7 +187,6 @@ if __name__ == "__main__":
                 f"iteration_{iteration}",
             )
             run_new_experience = 0
-
             if updated:
                 print("The model has been updated")
             else:
