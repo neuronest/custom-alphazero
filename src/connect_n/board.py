@@ -78,7 +78,7 @@ class Board:
                 self.array_one_hot,
                 np.ones((self.board_height, self.board_width)) * self.turn,
             ]
-        )
+        ).astype("float32")
 
     @property
     def full_state_mirror(self) -> np.ndarray:
@@ -87,7 +87,7 @@ class Board:
                 self.array_one_hot_mirror,
                 np.ones((self.board_height, self.board_width)) * self.turn_mirror,
             ]
-        )
+        ).astype("float32")
 
     @property
     def odd_moves_number(self) -> bool:
