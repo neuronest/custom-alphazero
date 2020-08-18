@@ -19,6 +19,7 @@ async def post(
 ):
     model = request.app.state.model
     data = inputs.dict()
+    run_id = data.pop("run_id")
     states = np.asarray(data.pop("states"))
     policies = np.asarray(data.pop("policies"))
     values = np.asarray(data.pop("values"))
@@ -37,7 +38,7 @@ async def post(
     )
     request.app.state.iteration += 1
     request.app.state.number_samples += len(states)
-    response = {"loss": loss, "updated": False}
+    response = {"loss": loss, "updated": False, "iteration": request.app.state.iteration}
     with writer.as_default():
         tf.summary.scalar("loss", loss, step=request.app.state.iteration)
         tf.summary.scalar(

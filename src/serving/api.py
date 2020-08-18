@@ -11,6 +11,7 @@ def start() -> FastAPI:
     main_app.state.inference_batch = InferenceBatch(
         model=main_app.state.model, batch_size=ConfigServing.inference_batch_size
     )
+    main_app.state.evaluate_with_mcts = ConfigServing.evaluate_with_mcts
     main_app.state.iteration = 0
     main_app.state.number_samples = 0
     main_app.include_router(

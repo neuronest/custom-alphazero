@@ -76,6 +76,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     mono_process = args.mono_process
+    run_id = "".join(
+        [token for token in str(datetime.today().replace(microsecond=0)) if token.isdigit()]
+    )
     if not mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
@@ -148,7 +151,7 @@ if __name__ == "__main__":
             sample_indexes = np.random.choice(len(states_queue), ConfigGeneral.minimum_training_size, replace=False)
             states_batch, policies_batch, rewards_batch = \
                 states_queue[sample_indexes], policies_queue[sample_indexes], rewards_queue[sample_indexes]
-            loss, updated = train_samples(states_batch, [policies_batch, rewards_batch])
+            loss, updated, iteration = train_samples(run_id, states_batch, [policies_batch, rewards_batch])
             print(
                 "Training took {:.2f} seconds".format(
                     time.time() - training_starting_time
@@ -158,11 +161,6 @@ if __name__ == "__main__":
             )
             if updated:
                 print("The model has been updated")
-                # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
-                MctsVisualizer(
-                    mcts_tree.root,
-                    mcts_name=f"mcts_iteration_{iteration}",
-                ).save_as_pdf(directory="mcts_visualization")
             else:
                 print("The model has not been updated")
             print("Current loss: {0:.5f}".format(loss))
