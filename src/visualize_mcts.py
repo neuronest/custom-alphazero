@@ -4,16 +4,21 @@ from graphviz import Digraph
 
 
 class MctsVisualizer:
-    def __init__(self, mcts_root_node, mcts_name="mcts", show_node_index=True):
+    def __init__(
+        self,
+        mcts_root_node,
+        mcts_name="mcts",
+        show_node_index=True,
+        remove_unplayed_edge=False,
+    ):
         self.mcts_root_node = mcts_root_node
         self.mcts_name = mcts_name
         self.show_node_index = show_node_index
+        self.remove_unplayed_edge = remove_unplayed_edge
         self.node_ref_index = {}
-        self.graph_mcts = self.mcts_graph_from_edges(
-            MctsVisualizer._breadth_first_edges(self.mcts_root_node),
-            remove_unvisited=True,
-        )
+        self.edges = MctsVisualizer._breadth_first_edges(self.mcts_root_node)
         self._enrich_edges()
+        self.graph_mcts = self.mcts_graph(remove_unvisited=True)
 
     @staticmethod
     def _breadth_first_edges(root_node):
@@ -80,11 +85,20 @@ class MctsVisualizer:
                     )
                 nodes_analyzed.add(id(parent))
 
-        if remove_unvisited:
-            edges = [edge for edge in edges if edge.visit_count > 0]
+    def mcts_graph(self, remove_unvisited=True):
+        edges = (
+            [edge for edge in self.edges if edge.visit_count > 0]
+            if remove_unvisited
+            else self.edges
+        )
+        edges = (
+            [edge for edge in edges if edge.selected]
+            if self.remove_unplayed_edge
+            else edges
+        )
 
         graph_mcts = Digraph("G", filename=f"{self.mcts_name}.gv")
-        for edge in edges[:]:
+        for edge in edges:
             graph_mcts.edge(
                 self._describe_node(edge.parent),
                 self._describe_node(edge.child),
