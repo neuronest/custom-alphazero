@@ -70,6 +70,7 @@ async def post(
             )
             writer.flush()
         updated = score >= ConfigServing.replace_min_score
+        request.app.state.model = best_model
     if request.app.state.iteration % ConfigServing.samples_checkpoint_frequency == 0:
         print("Saving current samples...")
         np.savez(
