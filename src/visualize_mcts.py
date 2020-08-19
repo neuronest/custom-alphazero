@@ -13,6 +13,7 @@ class MctsVisualizer:
             MctsVisualizer._breadth_first_edges(self.mcts_root_node),
             remove_unvisited=True,
         )
+        self._enrich_edges()
 
     @staticmethod
     def _breadth_first_edges(root_node):
@@ -52,14 +53,32 @@ class MctsVisualizer:
         u = round(edge.exploration_term(), round_value_at)
         p = round(edge.prior, round_value_at)
         n = edge.visit_count
+        p_n = round(edge.proportion_n, round_value_at)
         # .x just when with gravity and for connect_n, find something more general
-        label = (
-            f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} A={edge.action.x}"
-        )
+        label = f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} PN={p_n} A={edge.action.x}"
         color = "red" if edge.selected else "black"
         return {"label": label, "color": color}
 
-    def mcts_graph_from_edges(self, edges, remove_unvisited=True):
+    def _enrich_edges(self):
+        MctsVisualizer._add_visit_count_proportions_to_edges(self.edges)
+
+    @staticmethod
+    def _add_visit_count_proportions_to_edges(edges):
+        nodes_analyzed = set()
+        for edge in edges:
+            parent = edge.parent
+            if id(parent) in nodes_analyzed:
+                continue
+            else:
+                sum_visit_counts = sum([e.visit_count for e in parent.edges])
+                for e in parent.edges:
+                    # set all proportions to 0 if no edge has been visited from this node
+                    e.proportion_n = (
+                        float(e.visit_count) / sum_visit_counts
+                        if sum_visit_counts > 0
+                        else 0
+                    )
+                nodes_analyzed.add(id(parent))
 
         if remove_unvisited:
             edges = [edge for edge in edges if edge.visit_count > 0]
