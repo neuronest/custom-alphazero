@@ -203,6 +203,11 @@ if __name__ == "__main__":
             MctsVisualizer(
                 mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}",
             ).save_as_pdf(directory=iteration_path)
+            MctsVisualizer(
+                mcts_tree.root,
+                mcts_name=f"mcts_iteration_light_{iteration}",
+                remove_unplayed_edge=True
+            ).save_as_pdf(directory=iteration_path)
             states_batch, policies_batch, rewards_batch = (
                 None,
                 None,
