@@ -61,8 +61,9 @@ class MctsVisualizer:
         p_n = round(edge.proportion_n, round_value_at)
         # .x just when with gravity and for connect_n, find something more general
         label = f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} PN={p_n} A={edge.action.x}"
-        color = "red" if edge.selected else "black"
-        return {"label": label, "color": color}
+        color = "red" if edge.played else "black"
+        line_width = "4" if edge.greedily_played else "1"
+        return {"label": label, "color": color, "line_width": line_width}
 
     def _enrich_edges(self):
         MctsVisualizer._add_visit_count_proportions_to_edges(self.edges)
@@ -104,6 +105,7 @@ class MctsVisualizer:
                 self._describe_node(edge.child),
                 color=MctsVisualizer._describe_edge(edge)["color"],
                 label=MctsVisualizer._describe_edge(edge)["label"],
+                penwidth=MctsVisualizer._describe_edge(edge)["line_width"],
             )
         return graph_mcts
 

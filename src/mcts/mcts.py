@@ -28,6 +28,7 @@ class UCTEdge:
         self.visit_count = 0
         self.total_action_value = 0.0
         self.selected = False
+        self.greedily_played = False
 
     @property
     def siblings(self):
@@ -182,6 +183,7 @@ class MCTS:
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
         edge.selected = True
+        edge.greedily_played = greedy
         parent_state = self.board.full_state
         self.board.play(edge.action, keep_same_player=True)
         child_state = self.board.full_state
