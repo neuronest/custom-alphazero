@@ -4,9 +4,7 @@ import os
 from src.utils import last_saved_model, last_iteration_name
 
 import numpy as np
-import platform
 import time
-import argparse
 from typing import List, Tuple, Optional, Dict
 from functools import partial
 from datetime import datetime
@@ -102,7 +100,8 @@ def play_game(
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
-        greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
+        # mcts.board.fullmove_number starts at 0
+        greedy = mcts.board.fullmove_number >= ConfigMCTS.index_move_greedy
         parent_state, child_state, policy, last_move = mcts.play(
             greedy, return_details=True
         )
