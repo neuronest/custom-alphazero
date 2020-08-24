@@ -123,7 +123,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     return np.asarray(response_content["probabilities"]), response_content["value"]
 
 
-def train_samples(
+def train_run_samples(
     run_id: str, states: np.ndarray, labels: List[np.ndarray]
 ) -> Tuple[float, bool, int]:
     headers = {"content-type": "application/octet-stream"}

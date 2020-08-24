@@ -1,12 +1,10 @@
-import os
 import numpy as np
-from functools import partial
 from typing import Tuple, Optional
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigServing, ConfigModel
+from src.config import ConfigGeneral, ConfigMCTS, ConfigServing
 from src.mcts.mcts import MCTS
 from src.model.tensorflow.model import PolicyValueModel
-from src.serving.factory import init_model
+from src.utils import last_saved_model, last_iteration_name
 from src.mcts.utils import normalize_probabilities
 
 if ConfigGeneral.game == "chess":
@@ -20,25 +18,6 @@ else:
     raise NotImplementedError
 
 
-def get_last_iteration_name(
-    run_path: str, prefix: str = "iteration", sep: str = "_"
-) -> str:
-    def _is_correct_iteration_directory(
-        directory: str, run_path: str, prefix: str
-    ) -> bool:
-        return directory.startswith(prefix) and os.path.exists(
-            os.path.join(run_path, directory, ConfigModel.model_meta)
-        )
-
-    return max(
-        filter(
-            partial(_is_correct_iteration_directory, run_path=run_path, prefix=prefix),
-            os.listdir(run_path),
-        ),
-        key=lambda x: int(x.split(sep)[-1]),
-    )
-
-
 def evaluate_against_last_model(
     current_model: PolicyValueModel,
     previous_model: Optional[PolicyValueModel] = None,
@@ -48,11 +27,7 @@ def evaluate_against_last_model(
 ) -> Tuple[PolicyValueModel, float]:
     if previous_model is None:
         assert run_path is not None
-        try:
-            max_iteration_name = get_last_iteration_name(run_path)
-            previous_model = init_model(os.path.join(run_path, max_iteration_name))
-        except ValueError:
-            previous_model = init_model()
+        previous_model = last_saved_model(run_path)
     score_current_model, null_games = 0, 0
     for game_index in range(ConfigServing.evaluation_games_number):
         model = current_model if game_index % 2 == 0 else previous_model
