@@ -12,11 +12,12 @@ from functools import partial
 from datetime import datetime
 import pickle
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
+from src.config import ConfigGeneral, ConfigMCTS, ConfigPath, ConfigServing
 
 from src.mcts.mcts import MCTS
-from src.serving.factory import train_samples
 from src.visualize_mcts import MctsVisualizer
+from src.model.tensorflow.train import train_and_report_performance
+from src.serving import factory
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -121,7 +122,45 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
-def train_on_queue(
+# class intended to reproduce the same global behavior as request.app.state on fastapi server
+class App:
+    class State:
+        number_samples = 0
+        iteration = 0
+
+
+def train_run_samples(
+    run_id: str, states: np.ndarray, labels: List[np.ndarray]
+) -> Tuple[float, bool, int]:
+    policies, values = labels
+    App.State.number_samples += len(states)
+    run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+    iteration_path = os.path.join(run_path, f"iteration_{App.State.iteration}")
+    tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
+    os.makedirs(iteration_path, exist_ok=True)
+    os.makedirs(tensorboard_path, exist_ok=True)
+    # load last model that has been used for self-play and now to train
+    model = last_saved_model(
+        os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+    )
+    _, loss, updated = train_and_report_performance(
+        model,
+        states,
+        policies,
+        values,
+        run_path,
+        iteration_path,
+        tensorboard_path,
+        App.State.iteration,
+        App.State.number_samples,
+        ConfigServing.training_epochs,
+    )
+    iteration = App.State.iteration
+    App.State.iteration += 1
+    return loss, updated, iteration
+
+
+def train_run_queue(
     run_id: str,
     states_queue: np.ndarray,
     policies_queue: np.ndarray,
@@ -140,9 +179,14 @@ def train_on_queue(
         policies_queue[sample_indexes],
         rewards_queue[sample_indexes],
     )
-    loss, updated, iteration = train_samples(
-        run_id, states_batch, [policies_batch, rewards_batch]
-    )
+    if ConfigGeneral.run_with_http:
+        loss, updated, iteration = factory.train_run_samples(
+            run_id, states_batch, [policies_batch, rewards_batch]
+        )
+    else:
+        loss, updated, iteration = train_run_samples(
+            run_id, states_batch, [policies_batch, rewards_batch]
+        )
     print(f"Training took {time.time() - training_starting_time:.2f} seconds")
     return loss, updated, iteration
 
@@ -230,7 +274,7 @@ if __name__ == "__main__":
             len(states_queue) >= ConfigGeneral.minimum_training_size
             and latest_experience_amount >= ConfigGeneral.minimum_delta_size
         ):
-            loss, updated, iteration = train_on_queue(
+            loss, updated, iteration = train_run_queue(
                 run_id,
                 states_queue,
                 policies_queue,
