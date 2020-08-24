@@ -39,6 +39,7 @@ class ConfigMCTS:
     dirichlet_noise_value = 0.03
     dirichlet_noise_ratio = 0.25
     index_move_greedy = 15  # 30 should be the default value
+    use_solver = False
 
 
 class ConfigModel:
@@ -72,9 +73,10 @@ class ConfigServing:
     samples_checkpoint_frequency = 1
     training_epochs = 20
     batch_size = 256
-    evaluation_games_number = 250
+    evaluation_games_number = 100
     replace_min_score = 0.55
     evaluate_with_mcts = False
+    evaluate_with_solver = True
 
 
 class ConfigPath:
@@ -84,3 +86,5 @@ class ConfigPath:
     samples_name = "samples.npz"
     tensorboard_endpath = "tensorboard"
     mcts_visualization_endpath = "mcts_visualization"
+    connect4_solver_path = "./src/exact_solvers/c4solver"
+    connect4_opening_book = "./src/exact_solvers/7x6.book"

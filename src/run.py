@@ -49,6 +49,7 @@ def play_game(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
+        use_solver=ConfigMCTS.use_solver,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
