@@ -40,3 +40,65 @@ def train(
         else ConfigModel.minimum_learning_rate
     )
     return loss
+
+
+def train_and_report_performance(
+    model: PolicyValueModel,
+    inputs: np.ndarray,
+    policy_labels: np.ndarray,
+    value_labels: np.ndarray,
+    run_path: str,
+    iteration_path: str,
+    tensorboard_path: str,
+    iteration: int,
+    number_samples: int,
+    epoch: int,
+) -> Tuple[PolicyValueModel, float, bool]:
+
+    writer = tf.summary.create_file_writer(tensorboard_path)
+    loss = train(
+        model,
+        inputs,
+        [policy_labels, value_labels],
+        epochs=epoch,
+        batch_size=ConfigServing.batch_size,
+    )
+    with writer.as_default():
+        tf.summary.scalar("loss", loss, step=iteration)
+        tf.summary.scalar(
+            "number of samples", number_samples, step=iteration,
+        )
+        tf.summary.scalar("steps", model.steps, step=iteration)
+        tf.summary.scalar("learning rate", model.get_learning_rate(), step=iteration)
+        writer.flush()
+
+    best_model, score = evaluate_against_last_model(
+        current_model=model,
+        run_path=run_path,
+        evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
+    )
+    if score >= ConfigServing.replace_min_score:
+        print(
+            f"The current model is better, saving best model trained for {epoch} epochs..."
+        )
+    else:
+        print("The previous model was better, saving best model...")
+    best_model.save_with_meta(iteration_path)
+    with writer.as_default():
+        tf.summary.scalar(
+            "last model winning score",
+            score,
+            step=iteration // ConfigServing.model_checkpoint_frequency,
+        )
+        writer.flush()
+    updated = score >= ConfigServing.replace_min_score
+
+    if (iteration + 1) % ConfigServing.samples_checkpoint_frequency == 0:
+        print("Saving current samples...")
+        np.savez(
+            os.path.join(iteration_path, ConfigPath.samples_name),
+            states=inputs,
+            policies=policy_labels,
+            values=value_labels,
+        )
+    return best_model, loss, updated
