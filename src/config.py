@@ -1,6 +1,7 @@
 class ConfigGeneral:
     game = "connect_n"
     concurrency = True
+    mono_process = False
     gpu_target = "0"
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     iterations = 10000
@@ -39,7 +40,7 @@ class ConfigMCTS:
     enable_dirichlet_noise = False  # disabled for now
     dirichlet_noise_value = 0.03
     dirichlet_noise_ratio = 0.25
-    index_move_greedy = 15  # 30 should be the default value
+    index_move_greedy = 8  # 30 should be the default value
     use_solver = False
 
 
@@ -71,7 +72,7 @@ class ConfigServing:
     inference_timeout = 1
     model_checkpoint_frequency = 1
     samples_checkpoint_frequency = 1
-    training_epochs = 20
+    training_epochs = 25
     batch_size = 256
     evaluation_games_number = 100
     replace_min_score = 0.55
