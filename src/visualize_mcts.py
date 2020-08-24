@@ -96,7 +96,7 @@ class MctsVisualizer:
             else self.edges
         )
         edges = (
-            [edge for edge in edges if edge.selected]
+            [edge for edge in edges if edge.played]
             if self.remove_unplayed_edge
             else edges
         )
