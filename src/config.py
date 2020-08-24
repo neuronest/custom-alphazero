@@ -7,6 +7,7 @@ class ConfigGeneral:
     minimum_training_size = 2500
     minimum_delta_size = 1000
     samples_queue_size = 10000
+    gpu = -1
 
 
 class ConfigChess:

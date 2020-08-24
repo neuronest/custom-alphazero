@@ -1,8 +1,12 @@
+import os
+
 from fastapi import FastAPI
 
-from src.config import ConfigServing, ConfigPath
+from src.config import ConfigServing, ConfigPath, ConfigGeneral
 from src.serving.factory import InferenceBatch, init_model
 from src.serving import inference, training
+
+os.environ["CUDA_VISIBLE_DEVICES"] = str(ConfigGeneral.gpu)
 
 
 def start() -> FastAPI:

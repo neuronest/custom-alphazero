@@ -26,6 +26,8 @@ elif ConfigGeneral.game == "connect_n":
 else:
     raise NotImplementedError
 
+os.environ["CUDA_VISIBLE_DEVICES"] = str(ConfigGeneral.gpu)
+
 
 def printer(
     board: Board, game_index: int, move_index: int, last_player: str, last_move: Move
