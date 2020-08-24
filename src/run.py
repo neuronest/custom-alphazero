@@ -14,7 +14,7 @@ from src.config import ConfigGeneral, ConfigMCTS, ConfigPath, ConfigServing
 
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
-from src.model.tensorflow.train import train_and_report_performance
+from src.model.tensorflow.train import train_and_report
 from src.serving import factory
 
 if ConfigGeneral.game == "chess":
@@ -144,7 +144,7 @@ def train_run_samples(
     model = last_saved_model(
         os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
     )
-    _, loss, updated = train_and_report_performance(
+    _, loss, updated = train_and_report(
         model,
         states,
         policies,

@@ -8,7 +8,7 @@ from src.model.tensorflow.train import train
 from src.serving.schema import ModelTrainingInputs, ModelTrainingOutputs
 from src.serving.example import TrainingExample
 from src.serving.evaluate import evaluate_against_last_model
-from src.model.tensorflow.train import train_and_report_performance
+from src.model.tensorflow.train import train_and_report
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ async def post(
     os.makedirs(tensorboard_path, exist_ok=True)
     request.app.state.number_samples += len(states)
 
-    best_model, loss, updated = train_and_report_performance(
+    best_model, loss, updated = train_and_report(
         request.app.state.model,
         states,
         policies,

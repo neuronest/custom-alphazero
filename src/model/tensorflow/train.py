@@ -42,7 +42,7 @@ def train(
     return loss
 
 
-def train_and_report_performance(
+def train_and_report(
     model: PolicyValueModel,
     inputs: np.ndarray,
     policy_labels: np.ndarray,
