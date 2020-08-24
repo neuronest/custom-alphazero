@@ -244,21 +244,13 @@ def play(run_id):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mono-process",
-        action="store_true",
-        help="Disable multiprocessing, used mainly for testing",
-    )
-    args = parser.parse_args()
-    mono_process = args.mono_process
     run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     mcts_name = "mcts_iteration_0"
     states_queue = policies_queue = rewards_queue = None
     latest_experience_amount = 0
     iteration_mcts_trees = []
     print(f"Starting run with id={run_id}")
-    if not mono_process:
+    if not ConfigGeneral.mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
         multiprocessing.set_start_method("spawn")
