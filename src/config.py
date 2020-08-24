@@ -1,6 +1,7 @@
 class ConfigGeneral:
     game = "connect_n"
     concurrency = True
+    gpu_target = "0"
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     iterations = 10000
     mcts_iterations = 75
