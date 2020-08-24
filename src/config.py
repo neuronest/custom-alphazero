@@ -50,11 +50,10 @@ class ConfigModel:
     depth = 2
     maximum_learning_rate = 1e-2
     learning_rates = {
-        range(0, 500): 1e-2,
-        range(501, 2000): 1e-3,
-        range(2000, 10000): 1e-4,
+        range(0, 150000): 1e-2,
+        range(150000, 300000): 1e-3,
     }
-    minimum_learning_rate = 2e-5
+    minimum_learning_rate = 1e-4
     momentum = 0.9
     filters = 128
 
