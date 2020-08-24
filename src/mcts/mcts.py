@@ -114,7 +114,7 @@ class MCTS:
         return current_node
 
     def evaluate_and_expand(self, node: UCTNode) -> float:
-        if self.model is not None:
+        elif self.model is not None:
             probabilities, value = self.model(
                 np.expand_dims(node.board.full_state, axis=0)
             )

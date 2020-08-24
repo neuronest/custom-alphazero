@@ -1,5 +1,8 @@
 import multiprocessing
 import os
+
+from src.utils import last_saved_model, last_iteration_name
+
 import numpy as np
 import platform
 import time
@@ -44,13 +47,21 @@ def printer(
 
 
 def play_game(
-    process_id: int, all_possible_moves: List[Move], mcts_iterations: int
+    process_id: int, all_possible_moves: List[Move], mcts_iterations: int, run_id: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
     np.random.seed(int((process_id + 1) * time.time()) % (2 ** 32 - 1))
+    model = (
+        None
+        if ConfigGeneral.run_with_http
+        else last_saved_model(
+            os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+        )
+    )
     mcts = MCTS(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
+        model=model,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
@@ -71,6 +82,9 @@ def play_game(
         rewards_game
         * ConfigGeneral.discounting_factor ** np.arange(len(states_game))[::-1]
     )
+    if not ConfigGeneral.run_with_http:
+        # multi process cannot serialize mcts.model
+        mcts.model = None
     return states_game, policies_game, rewards_game, mcts
 
 
