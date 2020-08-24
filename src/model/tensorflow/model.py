@@ -160,7 +160,6 @@ class PolicyValueModel(Model):
         )
         self.compile(optimizer=self.optimizer, loss=[policy_loss, value_loss])
         self.steps = 0
-        self.iteration = 0
 
     @tf.function
     def call(self, inputs, training=False, mask=None):
