@@ -159,6 +159,7 @@ class PolicyValueModel(Model):
             momentum=ConfigModel.momentum,
         )
         self.compile(optimizer=self.optimizer, loss=[policy_loss, value_loss])
+        self(np.random.rand(1, *self.input_dim).astype("float32"))  # run a dummy forward to initialize the model
         self.steps = 0
 
     @tf.function
