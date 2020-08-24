@@ -17,7 +17,7 @@ class MctsVisualizer:
         self.remove_unplayed_edge = remove_unplayed_edge
         self.node_ref_index = {}
         self.edges = MctsVisualizer._breadth_first_edges(self.mcts_root_node)
-        self._enrich_edges()
+        MctsVisualizer._enrich_edges(self.edges)
         self.graph_mcts = self.mcts_graph(remove_unvisited=True)
 
     @staticmethod
@@ -65,26 +65,29 @@ class MctsVisualizer:
         line_width = "4" if edge.greedily_played else "1"
         return {"label": label, "color": color, "line_width": line_width}
 
-    def _enrich_edges(self):
-        MctsVisualizer._add_visit_count_proportions_to_edges(self.edges)
+    @staticmethod
+    def _enrich_edges(edges):
+        MctsVisualizer._add_visits_proportions_to_edges(edges)
 
     @staticmethod
-    def _add_visit_count_proportions_to_edges(edges):
+    def _add_visits_proportions_to_edges(edges):
         nodes_analyzed = set()
         for edge in edges:
-            parent = edge.parent
-            if id(parent) in nodes_analyzed:
+            node = edge.parent
+            if id(node) in nodes_analyzed:
                 continue
             else:
-                sum_visit_counts = sum([e.visit_count for e in parent.edges])
-                for e in parent.edges:
+                node_edges_all_visits = sum(
+                    [node_edge.visit_count for node_edge in node.edges]
+                )
+                for node_edge in node.edges:
                     # set all proportions to 0 if no edge has been visited from this node
-                    e.proportion_n = (
-                        float(e.visit_count) / sum_visit_counts
-                        if sum_visit_counts > 0
+                    node_edge.proportion_n = (
+                        float(node_edge.visit_count) / node_edges_all_visits
+                        if node_edges_all_visits > 0
                         else 0
                     )
-                nodes_analyzed.add(id(parent))
+                nodes_analyzed.add(id(node))
 
     def mcts_graph(self, remove_unvisited=True):
         edges = (
