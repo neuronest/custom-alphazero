@@ -90,6 +90,7 @@ class MCTS:
         all_possible_moves: List[Move],
         concurrency: bool,
         model: Optional[PolicyValueModel] = None,
+        state_priors_value: Optional[dict] = None,
     ) -> None:
         self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
@@ -98,6 +99,9 @@ class MCTS:
         self.current_root = self.root
         self.path_cache = []
         self.model = model
+        self.state_priors_value = (
+            {} if state_priors_value is None else state_priors_value
+        )
 
     def initialize_root(self) -> UCTNode:
         return UCTNode(edges=[], board=deepcopy(self.board))
@@ -114,6 +118,8 @@ class MCTS:
         return current_node
 
     def evaluate_and_expand(self, node: UCTNode) -> float:
+        if repr(node.board) in self.state_priors_value:
+            probabilities, value = self.state_priors_value[repr(node.board)]
         elif self.model is not None:
             probabilities, value = self.model(
                 np.expand_dims(node.board.full_state, axis=0)
@@ -122,10 +128,12 @@ class MCTS:
                 probabilities.numpy().ravel(),
                 value.numpy().item(),
             )
+            self.state_priors_value[repr(node.board)] = probabilities, value
         else:
             probabilities, value = infer_sample(
                 node.board.full_state, concurrency=self.concurrency
             )
+            self.state_priors_value[repr(node.board)] = probabilities, value
         node.evaluated_value = value
         probabilities = probabilities[
             node.board.legal_moves_mask(self.all_possible_moves)

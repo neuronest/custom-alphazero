@@ -7,9 +7,10 @@ import numpy as np
 import platform
 import time
 import argparse
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 from functools import partial
 from datetime import datetime
+import pickle
 
 from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 
@@ -46,6 +47,33 @@ def printer(
     print()
 
 
+def last_iteration_inferences(run_path: str, not_exist_ok: bool = True) -> Dict[str, Tuple[np.ndarray, float]]:
+    try:
+        with open(
+            os.path.join(
+                run_path, last_iteration_name(run_path), "state_priors_value.pkl"
+            ),
+            "rb",
+        ) as f:
+            state_priors_value = pickle.load(f)
+    except FileNotFoundError as e:
+        if not_exist_ok:
+            return None
+        raise e
+    return state_priors_value
+
+
+def save_mcts_trees_inferences(mcts_trees: List[MCTS], dir_path: str) -> None:
+    # dictionary mapping an input state to the inferred priors and value
+    state_priors_value = {}
+    for mcts_state_priors_value in [mcts.state_priors_value for mcts in mcts_trees]:
+        state_priors_value.update(mcts_state_priors_value)
+
+    os.makedirs(dir_path, exist_ok=True)
+    with open(os.path.join(dir_path, "state_priors_value.pkl"), "wb") as f:
+        pickle.dump(state_priors_value, f)
+
+
 def play_game(
     process_id: int, all_possible_moves: List[Move], mcts_iterations: int, run_id: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
@@ -57,11 +85,16 @@ def play_game(
             os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
         )
     )
+    state_priors_value = last_iteration_inferences(
+        os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id),
+        not_exist_ok=True,
+    )
     mcts = MCTS(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
         model=model,
+        state_priors_value=state_priors_value,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
@@ -124,6 +157,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     mono_process = args.mono_process
     run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    iteration_mcts_trees = []
     print(f"Starting run with id={run_id}")
     if not mono_process:
         # https://bugs.python.org/issue33725
@@ -213,7 +247,11 @@ if __name__ == "__main__":
             if updated:
                 print("The model has been updated")
             else:
-                print("The model has not been updated")
+                print(
+                    f"Run {run_id}, model has not been updated, saving mcts trees inferences for reuse"
+                )
+                save_mcts_trees_inferences(iteration_mcts_trees, iteration_path)
+
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
             MctsVisualizer(
@@ -224,3 +262,4 @@ if __name__ == "__main__":
                 None,
                 None,
             )
+            iteration_mcts_trees = []
