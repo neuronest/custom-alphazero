@@ -8,7 +8,7 @@ class ConfigGeneral:
     minimum_delta_size = 1000
     samples_queue_size = 10000
     mono_process = False
-    run_with_http = True
+    run_with_http = False
     gpu = -1
 
 
