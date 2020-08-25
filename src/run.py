@@ -52,7 +52,9 @@ def last_iteration_inferences(
     try:
         with open(
             os.path.join(
-                run_path, last_iteration_name(run_path), "state_priors_value.pkl"
+                run_path,
+                last_iteration_name(run_path),
+                ConfigPath.saved_inferences_name,
             ),
             "rb",
         ) as f:
@@ -71,7 +73,7 @@ def save_mcts_trees_inferences(mcts_trees: List[MCTS], dir_path: str) -> None:
         state_priors_value.update(mcts_state_priors_value)
 
     os.makedirs(dir_path, exist_ok=True)
-    with open(os.path.join(dir_path, "state_priors_value.pkl"), "wb") as f:
+    with open(os.path.join(dir_path, ConfigPath.saved_inferences_name), "wb") as f:
         pickle.dump(state_priors_value, f)
 
 

@@ -85,5 +85,6 @@ class ConfigPath:
     training_path = "/api/training"
     results_path = "results"
     samples_name = "samples.npz"
+    saved_inferences_name = "state_priors_value.pkl"
     tensorboard_endpath = "tensorboard"
     mcts_visualization_endpath = "mcts_visualization"
