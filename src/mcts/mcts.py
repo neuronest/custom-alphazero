@@ -6,6 +6,7 @@ from src.config import ConfigGeneral, ConfigMCTS
 from src.mcts.utils import normalize_probabilities
 from src.model.tensorflow.model import PolicyValueModel
 from src.serving.factory import infer_sample
+from src.exact_solvers.c4_exact_solver import exact_policy_and_value
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -89,6 +90,7 @@ class MCTS:
         all_possible_moves: List[Move],
         concurrency: bool,
         model: Optional[PolicyValueModel] = None,
+        use_solver: bool = False,
     ) -> None:
         self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
@@ -97,6 +99,7 @@ class MCTS:
         self.current_root = self.root
         self.path_cache = []
         self.model = model
+        self.use_solver = use_solver
 
     def initialize_root(self) -> UCTNode:
         return UCTNode(edges=[], board=deepcopy(self.board))
@@ -113,18 +116,23 @@ class MCTS:
         return current_node
 
     def evaluate_and_expand(self, node: UCTNode) -> float:
-        if self.model is not None:
-            probabilities, value = self.model(
-                np.expand_dims(node.board.full_state, axis=0)
-            )
-            probabilities, value = (
-                probabilities.numpy().ravel(),
-                value.numpy().item(),
+        if self.use_solver:
+            probabilities, value = exact_policy_and_value(
+                node.board, all_possible_moves=self.all_possible_moves
             )
         else:
-            probabilities, value = infer_sample(
-                node.board.full_state, concurrency=self.concurrency
-            )
+            if self.model is not None:
+                probabilities, value = self.model(
+                    np.expand_dims(node.board.full_state, axis=0)
+                )
+                probabilities, value = (
+                    probabilities.numpy().ravel(),
+                    value.numpy().item(),
+                )
+            else:
+                probabilities, value = infer_sample(
+                    node.board.full_state, concurrency=self.concurrency
+                )
         node.evaluated_value = value
         probabilities = probabilities[
             node.board.legal_moves_mask(self.all_possible_moves)

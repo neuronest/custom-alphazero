@@ -3,7 +3,6 @@ import os
 import numpy as np
 import platform
 import time
-import argparse
 from typing import List, Tuple
 from functools import partial
 from datetime import datetime
@@ -49,6 +48,7 @@ def play_game(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
+        use_solver=ConfigMCTS.use_solver,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
@@ -99,17 +99,10 @@ def train_on_queue(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mono-process",
-        action="store_true",
-        help="Disable multiprocessing, used mainly for testing",
-    )
-    args = parser.parse_args()
-    mono_process = args.mono_process
+    os.environ["CUDA_VISIBLE_DEVICES"] = ConfigGeneral.gpu_target
     run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     print(f"Starting run with id={run_id}")
-    if not mono_process:
+    if not ConfigGeneral.mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
         if platform.system() == "Linux":
@@ -123,7 +116,7 @@ if __name__ == "__main__":
     latest_experience_amount = 0
     for _ in range(ConfigGeneral.iterations):
         starting_time = time.time()
-        if mono_process:
+        if ConfigGeneral.mono_process:
             states, policies, rewards, mcts_tree = play_game(
                 process_id=0,
                 all_possible_moves=all_possible_moves,
@@ -206,7 +199,7 @@ if __name__ == "__main__":
             MctsVisualizer(
                 mcts_tree.root,
                 mcts_name=f"mcts_iteration_light_{iteration}",
-                remove_unplayed_edge=True
+                remove_unplayed_edge=True,
             ).save_as_pdf(directory=iteration_path)
             states_batch, policies_batch, rewards_batch = (
                 None,

@@ -1,6 +1,8 @@
 class ConfigGeneral:
     game = "connect_n"
     concurrency = True
+    mono_process = False
+    gpu_target = "0"
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     iterations = 10000
     mcts_iterations = 75
@@ -38,7 +40,8 @@ class ConfigMCTS:
     enable_dirichlet_noise = False  # disabled for now
     dirichlet_noise_value = 0.03
     dirichlet_noise_ratio = 0.25
-    index_move_greedy = 15  # 30 should be the default value
+    index_move_greedy = 8  # 30 should be the default value
+    use_solver = False
 
 
 class ConfigModel:
@@ -48,11 +51,10 @@ class ConfigModel:
     depth = 2
     maximum_learning_rate = 1e-2
     learning_rates = {
-        range(0, 500): 1e-2,
-        range(501, 2000): 1e-3,
-        range(2000, 10000): 1e-4,
+        range(0, 150000): 1e-2,
+        range(150000, 300000): 1e-3,
     }
-    minimum_learning_rate = 2e-5
+    minimum_learning_rate = 1e-4
     momentum = 0.9
     filters = 128
 
@@ -70,11 +72,12 @@ class ConfigServing:
     inference_timeout = 1
     model_checkpoint_frequency = 1
     samples_checkpoint_frequency = 1
-    training_epochs = 20
+    training_epochs = 25
     batch_size = 256
-    evaluation_games_number = 250
+    evaluation_games_number = 100
     replace_min_score = 0.55
     evaluate_with_mcts = False
+    evaluate_with_solver = True
 
 
 class ConfigPath:
@@ -84,3 +87,5 @@ class ConfigPath:
     samples_name = "samples.npz"
     tensorboard_endpath = "tensorboard"
     mcts_visualization_endpath = "mcts_visualization"
+    connect4_solver_path = "./src/exact_solvers/c4solver"
+    connect4_opening_book = "./src/exact_solvers/7x6.book"

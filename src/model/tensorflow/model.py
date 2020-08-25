@@ -1,5 +1,6 @@
 import os
 import json
+import hashlib
 import numpy as np
 import tensorflow as tf
 from typing import List
@@ -159,8 +160,20 @@ class PolicyValueModel(Model):
             momentum=ConfigModel.momentum,
         )
         self.compile(optimizer=self.optimizer, loss=[policy_loss, value_loss])
+        self(
+            np.random.rand(1, *self.input_dim).astype("float32")
+        )  # run a dummy forward to initialize the model
         self.steps = 0
-        self.iteration = 0
+
+    @property
+    def hash(self) -> int:
+        return sum(
+            int(hashlib.md5(str(weight).encode("utf-8")).hexdigest(), 16)
+            for weight in self.get_weights()
+        )
+
+    def is_equal(self, other: "PolicyValueModel"):
+        return self.hash == other.hash
 
     @tf.function
     def call(self, inputs, training=False, mask=None):
@@ -176,10 +189,18 @@ class PolicyValueModel(Model):
             metadata = json.load(fp)
         self.steps = int(metadata.get("steps"))
         self.update_learning_rate(float(metadata.get("learning_rate")))
+        try:
+            assert self.hash == metadata.get("hash")
+        except AssertionError:
+            print(f"Unexpected weights hash recovered during model loading at {path}!")
 
     def save_with_meta(self, path):
         self.save_weights(os.path.join(path, ConfigModel.model_suffix))
-        metadata = {"steps": int(self.steps), "learning_rate": self.get_learning_rate()}
+        metadata = {
+            "steps": int(self.steps),
+            "learning_rate": self.get_learning_rate(),
+            "hash": self.hash,
+        }
         with open(os.path.join(path, ConfigModel.model_meta), "w") as fp:
             json.dump(metadata, fp, sort_keys=True, indent=4)
 

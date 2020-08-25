@@ -23,6 +23,7 @@ class Board:
         self.white = ConfigConnectN.white
         self.pieces = ConfigConnectN.pieces
         self.pieces_to_int = {symbol: value for value, symbol in self.pieces.items()}
+        self.played_moves = []
         if array is not None:
             assert isinstance(array, np.ndarray)
             assert (
@@ -38,12 +39,15 @@ class Board:
         self.game_over = False
         self.is_null = None
 
+    def __eq__(self, other: "Board"):
+        return np.array_equal(self.array, other.array)
+
     def __repr__(self):
         return "\n".join(
             ["".join(map(lambda x: self.pieces[x], row)) for row in self.array]
         )
 
-    def repr_graphviz(self):
+    def repr_graphviz(self) -> str:
         def customize_piece(piece):
             if piece == ".":
                 # make "." piece wider with spaces on sides to take as much space as other pieces
@@ -57,8 +61,11 @@ class Board:
             ]
         )
 
-    def __eq__(self, other: "Board"):
-        return np.array_equal(self.array, other.array)
+    def repr_list_played_moves(self) -> str:
+        if not self.gravity:
+            raise NotImplementedError
+        # the solver needs a string representation with played moves, indexed on 1
+        return "".join([str(int(str(move)) + 1) for move in self.played_moves])
 
     @property
     def turn_mirror(self) -> int:
@@ -110,6 +117,10 @@ class Board:
                 Move(self.gravity, x, y)
                 for y, x in zip(*np.where(self.array == ConfigConnectN.empty))
             ]
+
+    def last_move(self) -> Optional[Move]:
+        if len(self.played_moves):
+            return self.played_moves[-1]
 
     @staticmethod
     def get_all_possible_moves() -> List[Move]:
@@ -228,6 +239,7 @@ class Board:
         if keep_same_player:
             board.array = board.mirror()
             board.turn = ConfigConnectN.white  # virtually, it is always white to play
+        board.played_moves.append(move)
         if not on_copy:
             self.__dict__.update(board.__dict__)
         return board

@@ -51,11 +51,18 @@ async def post(
         )
         writer.flush()
     if request.app.state.iteration % ConfigServing.model_checkpoint_frequency == 0:
-        best_model, score = evaluate_against_last_model(
+        best_model, score, solver_score = evaluate_against_last_model(
             current_model=model,
             run_path=run_path,
             evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
+            evaluate_with_solver=ConfigServing.evaluate_with_solver,
         )
+        if solver_score is not None:
+            with writer.as_default():
+                tf.summary.scalar(
+                    "solver score", solver_score, step=request.app.state.iteration
+                )
+                writer.flush()
         if score >= ConfigServing.replace_min_score:
             print("The current model is better, saving...")
         else:
