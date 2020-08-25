@@ -139,10 +139,9 @@ class MCTS:
     def evaluate_and_expand(self, node: UCTNode) -> float:
         probabilities, value = self._priors_value_from_node(node)
         node.evaluated_value = value
-        probabilities = probabilities[
-            node.board.legal_moves_mask(self.all_possible_moves)
-        ]
-        probabilities = normalize_probabilities(probabilities)
+        probabilities = normalize_probabilities(
+            probabilities[node.board.legal_moves_mask(self.all_possible_moves)]
+        )
         for prior, move in zip(probabilities, node.board.moves):
             board_child = node.board.play(move, on_copy=True, keep_same_player=True)
             node.edges.append(
