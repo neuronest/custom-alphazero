@@ -54,7 +54,7 @@ class UCTEdge:
 
 
 class UCTNode:
-    def __init__(self, board: Board, edges: Optional[List[UCTEdge]]):
+    def __init__(self, board: Board, edges: List[UCTEdge]):
         self.board = board
         self.edges = edges
         self.evaluated_value = None
