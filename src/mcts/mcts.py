@@ -117,7 +117,7 @@ class MCTS:
             current_node = best_edge.child
         return current_node
 
-    def _priors_value_from_node(self, board: Board) -> Tuple[np.ndarray, float]:
+    def _priors_value_from_board(self, board: Board) -> Tuple[np.ndarray, float]:
         if repr(board) in self.state_priors_value:
             probabilities, value = self.state_priors_value[repr(board)]
         elif self.model is not None:
@@ -135,7 +135,7 @@ class MCTS:
         return probabilities, value
 
     def evaluate_and_expand(self, node: UCTNode) -> float:
-        probabilities, value = self._priors_value_from_node(node.board)
+        probabilities, value = self._priors_value_from_board(node.board)
         node.evaluated_value = value
         probabilities = normalize_probabilities(
             probabilities[node.board.legal_moves_mask(self.all_possible_moves)]
