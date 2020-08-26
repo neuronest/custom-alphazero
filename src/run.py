@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 
+import src.model.tensorflow.train
 from src.utils import last_saved_model, last_iteration_name
 
 import numpy as np
@@ -10,7 +11,7 @@ from functools import partial
 from datetime import datetime
 import pickle
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigPath, ConfigServing
+from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
@@ -146,7 +147,7 @@ def train_run_queue(
     if ConfigGeneral.run_with_http:
         train_run_samples = factory.train_run_samples_post
     else:
-        train_run_samples = factory.train_run_samples
+        train_run_samples = src.model.tensorflow.train.train_run_samples
     loss, updated, iteration = train_run_samples(
         run_id, states_batch, [policies_batch, rewards_batch]
     )
@@ -278,9 +279,7 @@ if __name__ == "__main__":
             mcts_visualizer.build_mcts_graph(
                 mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}"
             )
-            visualize_mcts_iteration(
-                mcts_visualizer, iteration, iteration_path, run_id=run_id
-            )
+            visualize_mcts_iteration(mcts_visualizer, iteration_path, run_id=run_id)
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None
             latest_experience_amount = 0

@@ -2,13 +2,11 @@ import requests
 import json
 import uuid
 import asyncio
-import os
 import numpy as np
 from typing import Tuple, List, Optional
 
 from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import PolicyValueModel
-from src.model.tensorflow.train import train_and_report
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -155,30 +153,3 @@ def train_run_samples_post(
         response_content["updated"],
         response_content["iteration"],
     )
-
-
-def train_run_samples(
-    run_id: str, states: np.ndarray, labels: List[np.ndarray]
-) -> Tuple[float, bool, int]:
-    policies, values = labels
-    App.State.number_samples += len(states)
-    run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
-    iteration_path = os.path.join(run_path, f"iteration_{App.State.iteration}")
-    tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
-    os.makedirs(iteration_path, exist_ok=True)
-    os.makedirs(tensorboard_path, exist_ok=True)
-    best_model, loss, updated = train_and_report(
-        App.State.model,
-        states,
-        policies,
-        values,
-        run_path,
-        iteration_path,
-        tensorboard_path,
-        App.State.iteration,
-        App.State.number_samples,
-    )
-    App.State.model = best_model
-    iteration = App.State.iteration
-    App.State.iteration += 1
-    return loss, updated, iteration

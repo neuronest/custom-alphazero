@@ -4,9 +4,10 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from src.config import ConfigServing, ConfigPath, ConfigModel
+from src.config import ConfigServing, ConfigPath, ConfigModel, ConfigGeneral
 from src.serving.evaluate import evaluate_against_last_model
 from src.model.tensorflow.model import PolicyValueModel
+from src.serving.factory import App
 from src.utils import last_saved_model
 
 
@@ -81,9 +82,7 @@ def train_and_report(
             evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
         )
         if score >= ConfigServing.replace_min_score:
-            print(
-                f"The current model is better, saving best model trained ..."
-            )
+            print("The current model is better, saving best model trained ...")
         else:
             print("The previous model was better, saving best model...")
         best_model.save_with_meta(iteration_path)
@@ -108,3 +107,31 @@ def train_and_report(
             values=value_labels,
         )
     return model, loss, updated
+
+
+def train_run_samples(
+    run_id: str, states: np.ndarray, labels: List[np.ndarray]
+) -> Tuple[float, bool, int]:
+    policies, values = labels
+    App.State.number_samples += len(states)
+    run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+    iteration_path = os.path.join(run_path, f"iteration_{App.State.iteration}")
+    tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
+    os.makedirs(iteration_path, exist_ok=True)
+    os.makedirs(tensorboard_path, exist_ok=True)
+    # returned model is trained model, best model can be different
+    model, loss, updated = train_and_report(
+        App.State.model,
+        states,
+        policies,
+        values,
+        run_path,
+        iteration_path,
+        tensorboard_path,
+        App.State.iteration,
+        App.State.number_samples,
+    )
+    App.State.model = model
+    iteration = App.State.iteration
+    App.State.iteration += 1
+    return loss, updated, iteration
