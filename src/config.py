@@ -2,11 +2,11 @@ class ConfigGeneral:
     game = "connect_n"
     concurrency = True
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
-    iterations = 10000
     mcts_iterations = 75
     minimum_training_size = 2500
     minimum_delta_size = 1000
     samples_queue_size = 10000
+    training_iterations = 10000
     mono_process = False
     run_with_http = False
     gpu = -1
@@ -86,5 +86,6 @@ class ConfigPath:
     results_path = "results"
     samples_name = "samples.npz"
     saved_inferences_name = "state_priors_value.pkl"
+    updated_mcts_dir = "updated_mcts"
     tensorboard_endpath = "tensorboard"
     mcts_visualization_endpath = "mcts_visualization"
