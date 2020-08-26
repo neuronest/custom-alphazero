@@ -14,9 +14,7 @@ from src.config import ConfigGeneral, ConfigMCTS, ConfigPath, ConfigServing
 
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
-from src.model.tensorflow.train import train_and_report
 from src.serving import factory
-from src.serving.factory import init_model
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -126,10 +124,6 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
-
-
-
-
 def train_run_queue(
     run_id: str,
     states_queue: np.ndarray,
@@ -150,6 +144,8 @@ def train_run_queue(
         rewards_queue[sample_indexes],
     )
     if ConfigGeneral.run_with_http:
+        train_run_samples = factory.train_run_samples_post
+    else:
         train_run_samples = factory.train_run_samples
     loss, updated, iteration = train_run_samples(
         run_id, states_batch, [policies_batch, rewards_batch]
@@ -285,13 +281,6 @@ if __name__ == "__main__":
             visualize_mcts_iteration(
                 mcts_visualizer, iteration, iteration_path, run_id=run_id
             )
-            # if model has been updated it will participate in the next self-play phase and in the next mcts tree
-            # mcts_name = (
-            #    f"mcts_updated_iteration_{iteration + 1}"
-            #    if updated
-            #    else f"mcts_iteration_{iteration + 1}"
-            # )
-
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None
             latest_experience_amount = 0
