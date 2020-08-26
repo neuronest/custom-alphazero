@@ -1,13 +1,10 @@
 import os
 import numpy as np
-import tensorflow as tf
 from fastapi import APIRouter, Body, Request
 
 from src.config import ConfigGeneral, ConfigServing, ConfigPath
-from src.model.tensorflow.train import train
 from src.serving.schema import ModelTrainingInputs, ModelTrainingOutputs
 from src.serving.example import TrainingExample
-from src.serving.evaluate import evaluate_against_last_model
 from src.model.tensorflow.train import train_and_report
 
 router = APIRouter()
@@ -29,8 +26,7 @@ async def post(
     os.makedirs(iteration_path, exist_ok=True)
     os.makedirs(tensorboard_path, exist_ok=True)
     request.app.state.number_samples += len(states)
-
-    best_model, loss, updated = train_and_report(
+    model, loss, updated = train_and_report(
         request.app.state.model,
         states,
         policies,
@@ -40,10 +36,8 @@ async def post(
         tensorboard_path,
         request.app.state.iteration,
         request.app.state.number_samples,
-        ConfigServing.training_epochs,
     )
-    # instruction to be checked
-    request.app.state.model = best_model
+    request.app.state.model = model
     response = {
         "loss": loss,
         "updated": updated,

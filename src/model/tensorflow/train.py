@@ -7,6 +7,7 @@ import tensorflow as tf
 from src.config import ConfigServing, ConfigPath, ConfigModel
 from src.serving.evaluate import evaluate_against_last_model
 from src.model.tensorflow.model import PolicyValueModel
+from src.utils import last_saved_model
 
 
 def train(
@@ -52,15 +53,14 @@ def train_and_report(
     tensorboard_path: str,
     iteration: int,
     number_samples: int,
-    epoch: int,
 ) -> Tuple[PolicyValueModel, float, bool]:
-
+    updated = False
     writer = tf.summary.create_file_writer(tensorboard_path)
     loss = train(
         model,
         inputs,
         [policy_labels, value_labels],
-        epochs=epoch,
+        epochs=ConfigServing.training_epochs,
         batch_size=ConfigServing.batch_size,
     )
     with writer.as_default():
@@ -71,28 +71,34 @@ def train_and_report(
         tf.summary.scalar("steps", model.steps, step=iteration)
         tf.summary.scalar("learning rate", model.get_learning_rate(), step=iteration)
         writer.flush()
-
-    best_model, score = evaluate_against_last_model(
-        current_model=model,
-        run_path=run_path,
-        evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
-    )
-    if score >= ConfigServing.replace_min_score:
-        print(
-            f"The current model is better, saving best model trained for {epoch} epochs..."
+    # if not evaluated the model to train next time will be the one that has trained even if it is weaker
+    # if evaluated the best model will take part in the next training
+    if (iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
+        # model at max iteration name path will be used for evaluation so it has to be the doing the self-play
+        best_model, score = evaluate_against_last_model(
+            current_model=model,
+            run_path=run_path,
+            evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
         )
+        if score >= ConfigServing.replace_min_score:
+            print(
+                f"The current model is better, saving best model trained ..."
+            )
+        else:
+            print("The previous model was better, saving best model...")
+        best_model.save_with_meta(iteration_path)
+        with writer.as_default():
+            tf.summary.scalar(
+                "last model winning score",
+                score,
+                step=iteration // ConfigServing.model_checkpoint_frequency,
+            )
+            writer.flush()
+        updated = score >= ConfigServing.replace_min_score
     else:
-        print("The previous model was better, saving best model...")
-    best_model.save_with_meta(iteration_path)
-    with writer.as_default():
-        tf.summary.scalar(
-            "last model winning score",
-            score,
-            step=iteration // ConfigServing.model_checkpoint_frequency,
-        )
-        writer.flush()
-    updated = score >= ConfigServing.replace_min_score
-
+        # model not evaluated so the last model that has done the self-play phase is loaded and saved at iteration_path
+        # to take part in the next self-play phase
+        last_saved_model(run_path).save_with_meta(iteration_path)
     if (iteration + 1) % ConfigServing.samples_checkpoint_frequency == 0:
         print("Saving current samples...")
         np.savez(
@@ -101,4 +107,4 @@ def train_and_report(
             policies=policy_labels,
             values=value_labels,
         )
-    return best_model, loss, updated
+    return model, loss, updated
