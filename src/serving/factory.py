@@ -3,7 +3,7 @@ import json
 import uuid
 import asyncio
 import numpy as np
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 
 from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import PolicyValueModel
@@ -74,24 +74,6 @@ class InferenceBatch:
         if not len(self.predictions):
             self.is_not_complete.set()
             self.is_complete.clear()
-
-
-def init_model(path: Optional[str] = None) -> PolicyValueModel:
-    all_possible_moves = get_all_possible_moves()
-    action_space = len(all_possible_moves)
-    input_dim = Board().full_state.shape
-    model = PolicyValueModel(input_dim=input_dim, action_space=action_space)
-    if path is not None:
-        model.load_with_meta(path)
-    return model
-
-
-# class intended to reproduce the same global behavior as request.app.state on fastapi server
-class App:
-    class State:
-        number_samples = 0
-        iteration = 0
-        model = init_model()
 
 
 def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, float]:

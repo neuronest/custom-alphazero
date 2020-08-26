@@ -54,7 +54,7 @@ class UCTEdge:
 
 
 class UCTNode:
-    def __init__(self, board: Board, edges: List[UCTEdge]):
+    def __init__(self, board: Board, edges: Optional[List[UCTEdge]]):
         self.board = board
         self.edges = edges
         self.evaluated_value = None
@@ -117,27 +117,25 @@ class MCTS:
             current_node = best_edge.child
         return current_node
 
-    def _priors_value_from_node(self, node: UCTNode) -> Tuple[np.ndarray, float]:
-        if repr(node.board) in self.state_priors_value:
-            probabilities, value = self.state_priors_value[repr(node.board)]
+    def _priors_value_from_node(self, board: Board) -> Tuple[np.ndarray, float]:
+        if repr(board) in self.state_priors_value:
+            probabilities, value = self.state_priors_value[repr(board)]
         elif self.model is not None:
-            probabilities, value = self.model(
-                np.expand_dims(node.board.full_state, axis=0)
-            )
+            probabilities, value = self.model(np.expand_dims(board.full_state, axis=0))
             probabilities, value = (
                 probabilities.numpy().ravel(),
                 value.numpy().item(),
             )
-            self.state_priors_value[repr(node.board)] = probabilities, value
+            self.state_priors_value[repr(board)] = probabilities, value
         else:
             probabilities, value = infer_sample(
-                node.board.full_state, concurrency=self.concurrency
+                board.full_state, concurrency=self.concurrency
             )
-            self.state_priors_value[repr(node.board)] = probabilities, value
+            self.state_priors_value[repr(board)] = probabilities, value
         return probabilities, value
 
     def evaluate_and_expand(self, node: UCTNode) -> float:
-        probabilities, value = self._priors_value_from_node(node)
+        probabilities, value = self._priors_value_from_node(node.board)
         node.evaluated_value = value
         probabilities = normalize_probabilities(
             probabilities[node.board.legal_moves_mask(self.all_possible_moves)]

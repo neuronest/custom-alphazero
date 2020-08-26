@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 from src.config import ConfigGeneral, ConfigMCTS, ConfigServing
 from src.mcts.mcts import MCTS
 from src.model.tensorflow.model import PolicyValueModel
-from src.utils import last_saved_model, last_iteration_name
+from src.utils import last_saved_model
 from src.mcts.utils import normalize_probabilities
 
 if ConfigGeneral.game == "chess":

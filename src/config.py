@@ -1,3 +1,11 @@
+import os
+
+gpu_index = "-1"
+tensorflow_log_level = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = tensorflow_log_level
+
+
 class ConfigGeneral:
     game = "connect_n"
     concurrency = True
@@ -9,7 +17,6 @@ class ConfigGeneral:
     training_iterations = 10000
     mono_process = False
     run_with_http = False
-    gpu = -1
 
 
 class ConfigChess:

@@ -12,7 +12,7 @@ async def post(
     request: Request,
     inputs: ModelInferenceInputs = Body(..., example=InferenceExample.inputs),
 ):
-    model = request.app.state.model
+    model = request.app.state.best_model
     inference_batch = request.app.state.inference_batch
     data = inputs.dict()
     uid = data.pop("uid")

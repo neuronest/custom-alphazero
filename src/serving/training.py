@@ -2,7 +2,7 @@ import os
 import numpy as np
 from fastapi import APIRouter, Body, Request
 
-from src.config import ConfigGeneral, ConfigServing, ConfigPath
+from src.config import ConfigGeneral, ConfigPath
 from src.serving.schema import ModelTrainingInputs, ModelTrainingOutputs
 from src.serving.example import TrainingExample
 from src.model.tensorflow.train import train_and_report
@@ -26,8 +26,8 @@ async def post(
     os.makedirs(iteration_path, exist_ok=True)
     os.makedirs(tensorboard_path, exist_ok=True)
     request.app.state.number_samples += len(states)
-    model, loss, updated = train_and_report(
-        request.app.state.model,
+    last_model, best_model, loss, updated = train_and_report(
+        request.app.state.last_model,
         states,
         policies,
         values,
@@ -37,7 +37,8 @@ async def post(
         request.app.state.iteration,
         request.app.state.number_samples,
     )
-    request.app.state.model = model
+    request.app.state.last_model = last_model
+    request.app.state.best_model = best_model
     response = {
         "loss": loss,
         "updated": updated,
