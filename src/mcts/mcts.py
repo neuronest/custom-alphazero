@@ -28,7 +28,8 @@ class UCTEdge:
         self.prior = prior
         self.visit_count = 0
         self.total_action_value = 0.0
-        self.selected = False
+        self.played = False
+        self.greedily_played = False
 
     @property
     def siblings(self):
@@ -91,6 +92,7 @@ class MCTS:
         concurrency: bool,
         model: Optional[PolicyValueModel] = None,
         use_solver: bool = False,
+        state_priors_value: Optional[dict] = None,
     ) -> None:
         self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
@@ -100,6 +102,9 @@ class MCTS:
         self.path_cache = []
         self.model = model
         self.use_solver = use_solver
+        self.state_priors_value = (
+            {} if state_priors_value is None else state_priors_value
+        )
 
     def initialize_root(self) -> UCTNode:
         return UCTNode(edges=[], board=deepcopy(self.board))
@@ -115,29 +120,33 @@ class MCTS:
             current_node = best_edge.child
         return current_node
 
-    def evaluate_and_expand(self, node: UCTNode) -> float:
-        if self.use_solver:
-            probabilities, value = exact_policy_and_value(
-                node.board, all_possible_moves=self.all_possible_moves
-            )
+    def _priors_value_from_board(self, board: Board) -> Tuple[np.ndarray, float]:
+        if repr(board) in self.state_priors_value:
+            probabilities, value = self.state_priors_value[repr(board)]
         else:
-            if self.model is not None:
-                probabilities, value = self.model(
-                    np.expand_dims(node.board.full_state, axis=0)
+            if self.use_solver:
+                probabilities, value = exact_policy_and_value(
+                    board, all_possible_moves=self.all_possible_moves
                 )
+            elif self.model is not None:
+                probabilities, value = self.model(np.expand_dims(board.full_state, axis=0))
                 probabilities, value = (
                     probabilities.numpy().ravel(),
                     value.numpy().item(),
                 )
             else:
                 probabilities, value = infer_sample(
-                    node.board.full_state, concurrency=self.concurrency
+                    board.full_state, concurrency=self.concurrency
                 )
+            self.state_priors_value[repr(board)] = probabilities, value
+        return probabilities, value
+
+    def evaluate_and_expand(self, node: UCTNode) -> float:
+        probabilities, value = self._priors_value_from_board(node.board)
         node.evaluated_value = value
-        probabilities = probabilities[
-            node.board.legal_moves_mask(self.all_possible_moves)
-        ]
-        probabilities = normalize_probabilities(probabilities)
+        probabilities = normalize_probabilities(
+            probabilities[node.board.legal_moves_mask(self.all_possible_moves)]
+        )
         for prior, move in zip(probabilities, node.board.moves):
             board_child = node.board.play(move, on_copy=True, keep_same_player=True)
             node.edges.append(
@@ -189,7 +198,8 @@ class MCTS:
             edge = node.edges[int(np.argmax(probabilities))]
         else:
             edge = np.random.choice(node.edges, 1, p=probabilities).item()
-        edge.selected = True
+        edge.greedily_played = greedy
+        edge.played = True
         parent_state = self.board.full_state
         self.board.play(edge.action, keep_same_player=True)
         child_state = self.board.full_state

@@ -1,16 +1,20 @@
 import multiprocessing
 import os
-import numpy as np
-import platform
 import time
+import random
+import numpy as np
 from typing import List, Tuple
 from functools import partial
 from datetime import datetime
 
 from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
-
+from src.utils import (
+    last_saved_model,
+    last_iteration_inferences,
+    save_inferences,
+    visualize_mcts_iteration,
+)
 from src.mcts.mcts import MCTS
-from src.serving.factory import train_samples
 from src.visualize_mcts import MctsVisualizer
 
 if ConfigGeneral.game == "chess":
@@ -25,43 +29,50 @@ elif ConfigGeneral.game == "connect_n":
 else:
     raise NotImplementedError
 
-
-def printer(
-    board: Board, game_index: int, move_index: int, last_player: str, last_move: Move
-):
-    print("Game number:\t", game_index + 1)
-    print("Moves played:\t", move_index)
-    print("Last player:\t", last_player)
-    print("Last move:\t", last_move)
-    if last_player == "white":
-        board.array = board.mirror()
-        board.update_array()
-    board.display_ascii()
-    print()
+if ConfigGeneral.run_with_http:
+    from src.serving.factory import train_run_samples_post as train_run_samples
+else:
+    from src.model.tensorflow.train import train_run_samples_local
+    from src.utils import LocalState
+    train_run_samples = partial(train_run_samples_local, local_state=LocalState())
 
 
 def play_game(
-    process_id: int, all_possible_moves: List[Move], mcts_iterations: int
+    process_id: int, all_possible_moves: List[Move], mcts_iterations: int, run_id: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
+    # we seed each process with an unique value to ensure each MCTS will be different
     np.random.seed(int((process_id + 1) * time.time()) % (2 ** 32 - 1))
+    if not ConfigGeneral.run_with_http:
+        model = last_saved_model(
+            os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
+        )
+    else:
+        model = None
+    state_priors_value = last_iteration_inferences(
+        os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id),
+        not_exist_ok=True,
+    )
     mcts = MCTS(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
         use_solver=ConfigMCTS.use_solver,
+        model=model,
+        state_priors_value=state_priors_value,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
         mcts.search(mcts_iterations)
-        greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
+        # mcts.board.fullmove_number starts at 0
+        greedy = mcts.board.fullmove_number >= ConfigMCTS.index_move_greedy
         parent_state, child_state, policy, last_move = mcts.play(
             greedy, return_details=True
         )
         states_game.append(parent_state)
         policies_game.append(policy)
+    states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     # we are assuming reward must be either 0 or 1 because last move must have to led to victory or draw
     reward = mcts.board.get_result(keep_same_player=True)
-    states_game, policies_game = np.asarray(states_game), np.asarray(policies_game)
     rewards_game = np.repeat(reward, len(states_game))
     # reverse rewards as odd positions starting from the end
     rewards_game[-2::-2] = -rewards_game[-2::-2]
@@ -69,10 +80,46 @@ def play_game(
         rewards_game
         * ConfigGeneral.discounting_factor ** np.arange(len(states_game))[::-1]
     )
+    if not ConfigGeneral.run_with_http:
+        # multi process cannot serialize mcts.model
+        mcts.model = None
     return states_game, policies_game, rewards_game, mcts
 
 
-def train_on_queue(
+def play(run_id: str,) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
+    if ConfigGeneral.mono_process:
+        states, policies, rewards, mcts_tree = play_game(
+            process_id=0,
+            all_possible_moves=get_all_possible_moves(),
+            mcts_iterations=ConfigGeneral.mcts_iterations,
+            run_id=run_id,
+        )
+        mcts_trees = [mcts_tree]
+    else:
+        processes = multiprocessing.cpu_count() - 1
+        pool = multiprocessing.Pool(processes=processes)
+        results = pool.map(
+            partial(
+                play_game,
+                all_possible_moves=get_all_possible_moves(),
+                mcts_iterations=ConfigGeneral.mcts_iterations,
+                run_id=run_id,
+            ),
+            range(processes),
+        )
+        pool.close()
+        pool.join()
+        states, policies, rewards, mcts_trees = list(zip(*results))
+        states, policies, rewards = (
+            np.vstack(states),
+            np.vstack(policies),
+            np.concatenate(rewards),
+        )
+        mcts_trees = list(mcts_trees)
+    return states, policies, rewards, mcts_trees
+
+
+def train_run_queue(
     run_id: str,
     states_queue: np.ndarray,
     policies_queue: np.ndarray,
@@ -91,59 +138,31 @@ def train_on_queue(
         policies_queue[sample_indexes],
         rewards_queue[sample_indexes],
     )
-    loss, updated, iteration = train_samples(
-        run_id, states_batch, [policies_batch, rewards_batch]
+    loss, updated, iteration = train_run_samples(
+        run_id=run_id, states=states_batch, labels=[policies_batch, rewards_batch]
     )
     print(f"Training took {time.time() - training_starting_time:.2f} seconds")
     return loss, updated, iteration
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = ConfigGeneral.gpu_target
     run_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    mcts_visualizer = MctsVisualizer(is_updated=False)
+    states_queue = policies_queue = rewards_queue = None
+    latest_experience_amount = 0
+    best_model_mcts_trees = []
     print(f"Starting run with id={run_id}")
     if not ConfigGeneral.mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
-        if platform.system() == "Linux":
-            multiprocessing.set_start_method("fork")
-        else:
-            multiprocessing.set_start_method("spawn")
-    all_possible_moves = get_all_possible_moves()
-    action_space = len(all_possible_moves)
-    input_dim = Board().full_state.shape
-    states_queue, policies_queue, rewards_queue = None, None, None
-    latest_experience_amount = 0
-    for _ in range(ConfigGeneral.iterations):
+        multiprocessing.set_start_method("spawn")
+    for _ in range(ConfigGeneral.training_iterations):
         starting_time = time.time()
-        if ConfigGeneral.mono_process:
-            states, policies, rewards, mcts_tree = play_game(
-                process_id=0,
-                all_possible_moves=all_possible_moves,
-                mcts_iterations=ConfigGeneral.mcts_iterations,
-            )
-        else:
-            processes = multiprocessing.cpu_count() - 1
-            pool = multiprocessing.Pool(processes=processes)
-            results = pool.map(
-                partial(
-                    play_game,
-                    all_possible_moves=all_possible_moves,
-                    mcts_iterations=ConfigGeneral.mcts_iterations,
-                ),
-                range(processes),
-            )
-            pool.close()
-            pool.join()
-            states, policies, rewards, mcts_trees = list(zip(*results))
-            states, policies, rewards = (
-                np.vstack(states),
-                np.vstack(policies),
-                np.concatenate(rewards),
-            )
-            # we choose a MCST tree randomly to be traced afterwards
-            # each tree results from a fixed state of the neural network, so there is no need to keep them all
-            mcts_tree = mcts_trees[np.random.randint(len(mcts_trees))]
+        states, policies, rewards, mcts_trees = play(run_id)
+        # we choose a MCST tree randomly to be traced afterwards
+        # each tree results from a fixed state of the neural network, so there is no need to keep them all
+        mcts_tree = random.choice(mcts_trees)
+        best_model_mcts_trees += mcts_trees
         latest_experience_amount += len(states)
         if any(
             sample is None for sample in [states_queue, policies_queue, rewards_queue]
@@ -173,7 +192,7 @@ if __name__ == "__main__":
             len(states_queue) >= ConfigGeneral.minimum_training_size
             and latest_experience_amount >= ConfigGeneral.minimum_delta_size
         ):
-            loss, updated, iteration = train_on_queue(
+            loss, updated, iteration = train_run_queue(
                 run_id,
                 states_queue,
                 policies_queue,
@@ -186,23 +205,26 @@ if __name__ == "__main__":
                 run_id,
                 f"iteration_{iteration}",
             )
-            latest_experience_amount = 0
             if updated:
-                print("The model has been updated")
+                print(
+                    f"Run {run_id}, model has been updated and saved at {iteration_path}"
+                )
             else:
-                print("The model has not been updated")
+                print(
+                    f"Run {run_id}, model has not been updated, saving mcts trees inferences for reuse"
+                )
+                save_inferences(
+                    [mcts.state_priors_value for mcts in best_model_mcts_trees],
+                    iteration_path,
+                )
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
-            MctsVisualizer(
-                mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}",
-            ).save_as_pdf(directory=iteration_path)
-            MctsVisualizer(
-                mcts_tree.root,
-                mcts_name=f"mcts_iteration_light_{iteration}",
-                remove_unplayed_edge=True,
-            ).save_as_pdf(directory=iteration_path)
-            states_batch, policies_batch, rewards_batch = (
-                None,
-                None,
-                None,
+            mcts_visualizer.build_mcts_graph(
+                mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}"
             )
+            visualize_mcts_iteration(mcts_visualizer, iteration_path, run_id=run_id)
+            # todo: add light version of visualization with name f"mcts_iteration_light_{iteration}"
+            mcts_visualizer = MctsVisualizer(is_updated=updated)
+            states_batch = policies_batch = rewards_batch = None
+            latest_experience_amount = 0
+            best_model_mcts_trees = []
