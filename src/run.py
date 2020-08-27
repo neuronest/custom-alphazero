@@ -11,7 +11,7 @@ from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 from src.utils import (
     last_saved_model,
     last_iteration_inferences,
-    save_mcts_state_priors_value,
+    save_inferences,
     visualize_mcts_iteration,
 )
 from src.mcts.mcts import MCTS
@@ -86,9 +86,7 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
-def play(
-    run_id: str,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Union[Tuple[MCTS], List[MCTS]]]:
+def play(run_id: str,) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
     if ConfigGeneral.mono_process:
         states, policies, rewards, mcts_tree = play_game(
             process_id=0,
@@ -117,6 +115,7 @@ def play(
             np.vstack(policies),
             np.concatenate(rewards),
         )
+        mcts_trees = list(mcts_trees)
     return states, policies, rewards, mcts_trees
 
 
@@ -214,8 +213,10 @@ if __name__ == "__main__":
                 print(
                     f"Run {run_id}, model has not been updated, saving mcts trees inferences for reuse"
                 )
-                save_mcts_state_priors_value(best_model_mcts_trees, iteration_path)
-
+                save_inferences(
+                    [mcts.state_priors_value for mcts in best_model_mcts_trees],
+                    iteration_path,
+                )
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
             mcts_visualizer.build_mcts_graph(

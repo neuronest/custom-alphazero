@@ -88,10 +88,12 @@ def last_iteration_inferences(
     return state_priors_value
 
 
-def save_mcts_state_priors_value(mcts_trees: List[MCTS], dir_path: str):
+def save_inferences(
+    inferences: List[Dict[str, Tuple[np.ndarray, float]]], dir_path: str
+):
     # dictionary mapping an input state to the inferred priors and value
     state_priors_value = {}
-    for mcts_state_priors_value in [mcts.state_priors_value for mcts in mcts_trees]:
+    for mcts_state_priors_value in inferences:
         state_priors_value.update(mcts_state_priors_value)
     os.makedirs(dir_path, exist_ok=True)
     with open(os.path.join(dir_path, ConfigPath.saved_inferences_name), "wb") as f:
