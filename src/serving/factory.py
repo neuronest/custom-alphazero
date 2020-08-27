@@ -75,6 +75,9 @@ class InferenceBatch:
             self.is_not_complete.set()
             self.is_complete.clear()
 
+    def update_model(self, model: PolicyValueModel):
+        self.model = model
+
 
 def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, float]:
     headers = {"content-type": "application/octet-stream"}

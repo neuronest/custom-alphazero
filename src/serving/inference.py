@@ -12,8 +12,9 @@ async def post(
     request: Request,
     inputs: ModelInferenceInputs = Body(..., example=InferenceExample.inputs),
 ):
-    model = request.app.state.best_model
+    best_model = request.app.state.best_model
     inference_batch = request.app.state.inference_batch
+    inference_batch.update_model(best_model)
     data = inputs.dict()
     uid = data.pop("uid")
     state = np.asarray(data.pop("state"))
@@ -24,7 +25,7 @@ async def post(
         prediction = inference_batch.get_prediction(uid)
         inference_batch.reset()
     else:
-        probabilities, value = model(np.expand_dims(state, axis=0))
+        probabilities, value = best_model(np.expand_dims(state, axis=0))
         probabilities, value = (
             probabilities.numpy().ravel().tolist(),
             value.numpy().item(),
