@@ -1,12 +1,10 @@
-import os
 import numpy as np
-from functools import partial
 from typing import Tuple, List, Optional
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigServing, ConfigModel
+from src.config import ConfigGeneral, ConfigMCTS, ConfigServing
 from src.mcts.mcts import MCTS
 from src.model.tensorflow.model import PolicyValueModel
-from src.serving.factory import init_model
+from src.utils import last_saved_model
 from src.mcts.utils import normalize_probabilities
 from src.exact_solvers.c4_exact_solver import exact_ranked_moves_and_value
 
@@ -21,25 +19,6 @@ elif ConfigGeneral.game == "connect_n":
     get_all_possible_moves = Board.get_all_possible_moves
 else:
     raise NotImplementedError
-
-
-def get_last_iteration_name(
-    run_path: str, prefix: str = "iteration", sep: str = "_"
-) -> str:
-    def _is_correct_iteration_directory(
-        directory: str, run_path: str, prefix: str
-    ) -> bool:
-        return directory.startswith(prefix) and os.path.exists(
-            os.path.join(run_path, directory, ConfigModel.model_meta)
-        )
-
-    return max(
-        filter(
-            partial(_is_correct_iteration_directory, run_path=run_path, prefix=prefix),
-            os.listdir(run_path),
-        ),
-        key=lambda x: int(x.split(sep)[-1]),
-    )
 
 
 def _single_game_evaluation(
@@ -115,11 +94,7 @@ def evaluate_against_last_model(
             raise NotImplementedError
     if previous_model is None:
         assert run_path is not None
-        try:
-            max_iteration_name = get_last_iteration_name(run_path)
-            previous_model = init_model(os.path.join(run_path, max_iteration_name))
-        except ValueError:
-            previous_model = init_model()
+        previous_model = last_saved_model(run_path)
     all_possible_moves = get_all_possible_moves()
     score_current_model = []
     solver_scores = []  # only used if evaluate_with_mcts is False for now

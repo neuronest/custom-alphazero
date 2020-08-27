@@ -1,14 +1,24 @@
+import os
+
+gpu_index = "-1"
+tensorflow_log_level = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = tensorflow_log_level
+
+
 class ConfigGeneral:
     game = "connect_n"
     concurrency = True
     mono_process = False
     gpu_target = "0"
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
-    iterations = 10000
     mcts_iterations = 75
     minimum_training_size = 2500
     minimum_delta_size = 1000
     samples_queue_size = 10000
+    training_iterations = 10000
+    mono_process = False
+    run_with_http = False
 
 
 class ConfigChess:
@@ -85,6 +95,8 @@ class ConfigPath:
     training_path = "/api/training"
     results_path = "results"
     samples_name = "samples.npz"
+    saved_inferences_name = "state_priors_value.pkl"
+    updated_mcts_dir = "updated_mcts"
     tensorboard_endpath = "tensorboard"
     mcts_visualization_endpath = "mcts_visualization"
     connect4_solver_path = "./src/exact_solvers/c4solver"

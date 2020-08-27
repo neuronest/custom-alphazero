@@ -6,19 +6,28 @@ from graphviz import Digraph
 class MctsVisualizer:
     def __init__(
         self,
-        mcts_root_node,
+        mcts_root_node=None,
         mcts_name="mcts",
         show_node_index=True,
         remove_unplayed_edge=False,
+        is_updated=False
     ):
         self.mcts_root_node = mcts_root_node
         self.mcts_name = mcts_name
         self.show_node_index = show_node_index
         self.remove_unplayed_edge = remove_unplayed_edge
         self.node_ref_index = {}
+        self.is_updated = is_updated
+        if self.mcts_root_node:
+            self.edges = MctsVisualizer._breadth_first_edges(self.mcts_root_node)
+            MctsVisualizer._enrich_edges(self.edges)
+            self.graph_mcts = self.mcts_graph(remove_unvisited=True)
+
+    def build_mcts_graph(self, mcts_root_node, mcts_name=None):
+        self.mcts_root_node = mcts_root_node
         self.edges = MctsVisualizer._breadth_first_edges(self.mcts_root_node)
-        self._enrich_edges()
-        self.graph_mcts = self.mcts_graph(remove_unvisited=True)
+        MctsVisualizer._enrich_edges(self.edges)
+        self.graph_mcts = self.mcts_graph(remove_unvisited=True, mcts_name=mcts_name)
 
     @staticmethod
     def _breadth_first_edges(root_node):
@@ -61,49 +70,54 @@ class MctsVisualizer:
         p_n = round(edge.proportion_n, round_value_at)
         # .x just when with gravity and for connect_n, find something more general
         label = f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} PN={p_n} A={edge.action.x}"
-        color = "red" if edge.selected else "black"
-        return {"label": label, "color": color}
-
-    def _enrich_edges(self):
-        MctsVisualizer._add_visit_count_proportions_to_edges(self.edges)
+        color = "red" if edge.played else "black"
+        line_width = "4" if edge.greedily_played else "1"
+        return {"label": label, "color": color, "line_width": line_width}
 
     @staticmethod
-    def _add_visit_count_proportions_to_edges(edges):
+    def _enrich_edges(edges):
+        MctsVisualizer._add_visits_proportions_to_edges(edges)
+
+    @staticmethod
+    def _add_visits_proportions_to_edges(edges):
         nodes_analyzed = set()
         for edge in edges:
-            parent = edge.parent
-            if id(parent) in nodes_analyzed:
+            node = edge.parent
+            if id(node) in nodes_analyzed:
                 continue
             else:
-                sum_visit_counts = sum([e.visit_count for e in parent.edges])
-                for e in parent.edges:
+                node_edges_all_visits = sum(
+                    [node_edge.visit_count for node_edge in node.edges]
+                )
+                for node_edge in node.edges:
                     # set all proportions to 0 if no edge has been visited from this node
-                    e.proportion_n = (
-                        float(e.visit_count) / sum_visit_counts
-                        if sum_visit_counts > 0
+                    node_edge.proportion_n = (
+                        float(node_edge.visit_count) / node_edges_all_visits
+                        if node_edges_all_visits > 0
                         else 0
                     )
-                nodes_analyzed.add(id(parent))
+                nodes_analyzed.add(id(node))
 
-    def mcts_graph(self, remove_unvisited=True):
+    def mcts_graph(self, remove_unvisited=True, mcts_name=None):
         edges = (
             [edge for edge in self.edges if edge.visit_count > 0]
             if remove_unvisited
             else self.edges
         )
         edges = (
-            [edge for edge in edges if edge.selected]
+            [edge for edge in edges if edge.played]
             if self.remove_unplayed_edge
             else edges
         )
-
-        graph_mcts = Digraph("G", filename=f"{self.mcts_name}.gv")
+        mcts_name = mcts_name if mcts_name is not None else self.mcts_name
+        graph_mcts = Digraph("G", filename=f"{mcts_name}.gv")
         for edge in edges:
             graph_mcts.edge(
                 self._describe_node(edge.parent),
                 self._describe_node(edge.child),
                 color=MctsVisualizer._describe_edge(edge)["color"],
                 label=MctsVisualizer._describe_edge(edge)["label"],
+                penwidth=MctsVisualizer._describe_edge(edge)["line_width"],
             )
         return graph_mcts
 

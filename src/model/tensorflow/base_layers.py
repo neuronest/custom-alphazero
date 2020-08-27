@@ -26,7 +26,7 @@ class InnerConvBlock(Layer):
         strides=(1, 1),
         padding="same",
         activation=None,
-        batch_normalization=None,
+        batch_normalization=False,
     ):
         super(InnerConvBlock, self).__init__()
         self.activation = activation
@@ -52,14 +52,14 @@ class InnerConvBlock(Layer):
             Activation(self.activation) if self.activation is not None else None
         )
         self.batch_normalization_layer = (
-            BatchNormalization() if self.batch_normalization is not None else None
+            BatchNormalization() if self.batch_normalization else None
         )
 
     @tf.function
     def call(self, inputs, training=False):
         outputs = inputs
         outputs = self.conv_layer(outputs)
-        if self.batch_normalization is not None:
+        if self.batch_normalization:
             outputs = self.batch_normalization_layer(outputs)
         if self.activation is not None:
             outputs = self.activation_layer(outputs)
@@ -74,7 +74,7 @@ class OuterConvBlock(Layer):
         kernel_size,
         padding="same",
         activation=None,
-        batch_normalization=None,
+        batch_normalization=False,
         residual_connexion=None,
     ):
         super(OuterConvBlock, self).__init__()

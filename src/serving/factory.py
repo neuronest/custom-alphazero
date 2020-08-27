@@ -3,7 +3,7 @@ import json
 import uuid
 import asyncio
 import numpy as np
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 
 from src.config import ConfigGeneral, ConfigServing, ConfigPath
 from src.model.tensorflow.model import PolicyValueModel
@@ -75,15 +75,8 @@ class InferenceBatch:
             self.is_not_complete.set()
             self.is_complete.clear()
 
-
-def init_model(path: Optional[str] = None) -> PolicyValueModel:
-    all_possible_moves = get_all_possible_moves()
-    action_space = len(all_possible_moves)
-    input_dim = Board().full_state.shape
-    model = PolicyValueModel(input_dim=input_dim, action_space=action_space)
-    if path is not None:
-        model.load_with_meta(path)
-    return model
+    def update_model(self, model: PolicyValueModel):
+        self.model = model
 
 
 def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, float]:
@@ -123,7 +116,7 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     return np.asarray(response_content["probabilities"]), response_content["value"]
 
 
-def train_samples(
+def train_run_samples_post(
     run_id: str, states: np.ndarray, labels: List[np.ndarray]
 ) -> Tuple[float, bool, int]:
     headers = {"content-type": "application/octet-stream"}
