@@ -7,8 +7,7 @@ import tensorflow as tf
 from src.config import ConfigServing, ConfigPath, ConfigModel, ConfigGeneral
 from src.serving.evaluate import evaluate_against_last_model
 from src.model.tensorflow.model import PolicyValueModel
-from src.serving.factory import App
-from src.utils import last_saved_model
+from src.utils import LocalState, last_saved_model, init_model
 
 
 def train(
@@ -45,7 +44,7 @@ def train(
 
 
 def train_and_report(
-    model: PolicyValueModel,
+    last_model: PolicyValueModel,
     inputs: np.ndarray,
     policy_labels: np.ndarray,
     value_labels: np.ndarray,
@@ -54,11 +53,11 @@ def train_and_report(
     tensorboard_path: str,
     iteration: int,
     number_samples: int,
-) -> Tuple[PolicyValueModel, float, bool]:
+) -> Tuple[PolicyValueModel, PolicyValueModel, float, bool]:
     updated = False
     writer = tf.summary.create_file_writer(tensorboard_path)
     loss = train(
-        model,
+        last_model,
         inputs,
         [policy_labels, value_labels],
         epochs=ConfigServing.training_epochs,
@@ -69,15 +68,17 @@ def train_and_report(
         tf.summary.scalar(
             "number of samples", number_samples, step=iteration,
         )
-        tf.summary.scalar("steps", model.steps, step=iteration)
-        tf.summary.scalar("learning rate", model.get_learning_rate(), step=iteration)
+        tf.summary.scalar("steps", last_model.steps, step=iteration)
+        tf.summary.scalar(
+            "learning rate", last_model.get_learning_rate(), step=iteration
+        )
         writer.flush()
     # if not evaluated the model to train next time will be the one that has trained even if it is weaker
     # if evaluated the best model will take part in the next training
     if (iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
         # model at max iteration name path will be used for evaluation so it has to be the doing the self-play
         best_model, score = evaluate_against_last_model(
-            current_model=model,
+            current_model=last_model,
             run_path=run_path,
             evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
         )
@@ -86,6 +87,8 @@ def train_and_report(
         else:
             print("The previous model was better, saving best model...")
         best_model.save_with_meta(iteration_path)
+        # we reinstantiate the best model the guarantee the fact it has not the same reference as the last model
+        best_model = init_model(iteration_path)
         with writer.as_default():
             tf.summary.scalar(
                 "last model winning score",
@@ -97,7 +100,8 @@ def train_and_report(
     else:
         # model not evaluated so the last model that has done the self-play phase is loaded and saved at iteration_path
         # to take part in the next self-play phase
-        last_saved_model(run_path).save_with_meta(iteration_path)
+        best_model = last_saved_model(run_path)
+        best_model.save_with_meta(iteration_path)
     if (iteration + 1) % ConfigServing.samples_checkpoint_frequency == 0:
         print("Saving current samples...")
         np.savez(
@@ -106,32 +110,33 @@ def train_and_report(
             policies=policy_labels,
             values=value_labels,
         )
-    return model, loss, updated
+    return last_model, best_model, loss, updated
 
 
-def train_run_samples(
-    run_id: str, states: np.ndarray, labels: List[np.ndarray]
+def train_run_samples_local(
+    local_state: LocalState, run_id: str, states: np.ndarray, labels: List[np.ndarray]
 ) -> Tuple[float, bool, int]:
     policies, values = labels
-    App.State.number_samples += len(states)
+    local_state.number_samples += len(states)
     run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
-    iteration_path = os.path.join(run_path, f"iteration_{App.State.iteration}")
+    iteration_path = os.path.join(run_path, f"iteration_{local_state.iteration}")
     tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
     os.makedirs(iteration_path, exist_ok=True)
     os.makedirs(tensorboard_path, exist_ok=True)
     # returned model is trained model, best model can be different
-    model, loss, updated = train_and_report(
-        App.State.model,
+    last_model, best_model, loss, updated = train_and_report(
+        local_state.last_model,
         states,
         policies,
         values,
         run_path,
         iteration_path,
         tensorboard_path,
-        App.State.iteration,
-        App.State.number_samples,
+        local_state.iteration,
+        local_state.number_samples,
     )
-    App.State.model = model
-    iteration = App.State.iteration
-    App.State.iteration += 1
+    local_state.last_model = last_model
+    local_state.best_model = best_model
+    iteration = local_state.iteration
+    local_state.iteration += 1
     return loss, updated, iteration

@@ -1,3 +1,4 @@
+import hashlib
 import numpy as np
 from copy import deepcopy
 from typing import Optional, List
@@ -37,6 +38,9 @@ class Board:
         self.fullmove_number = 0
         self.game_over = False
         self.is_null = None
+
+    def __hash__(self):
+        return int(hashlib.md5(repr(self).encode("utf-8")).hexdigest(), 16)
 
     def __repr__(self):
         return "\n".join(
