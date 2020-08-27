@@ -10,14 +10,12 @@ class ConfigGeneral:
     game = "connect_n"
     concurrency = True
     mono_process = False
-    gpu_target = "0"
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     mcts_iterations = 75
     minimum_training_size = 2500
     minimum_delta_size = 1000
     samples_queue_size = 10000
     training_iterations = 10000
-    mono_process = False
     run_with_http = False
 
 
