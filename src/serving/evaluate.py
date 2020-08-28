@@ -48,7 +48,9 @@ def _single_game_evaluation(
             if evaluate_with_solver and model is current_model:
                 ranked_moves_indexes, _ = exact_ranked_moves_and_value(board)
                 solver_scores.append(
-                    1 - ranked_moves_indexes[board.moves.index(move)] / (len(board.moves) - 1)
+                    1
+                    - (ranked_moves_indexes[board.moves.index(move)] + 1)
+                    / len(board.moves)
                 )
             board.play(move, keep_same_player=True)
             if not board.is_game_over():
