@@ -209,6 +209,7 @@ if __name__ == "__main__":
                 print(
                     f"Run {run_id}, model has been updated and saved at {iteration_path}"
                 )
+                best_model_mcts_trees = []
             else:
                 print(
                     f"Run {run_id}, model has not been updated, saving mcts trees inferences for reuse"
@@ -227,4 +228,4 @@ if __name__ == "__main__":
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None
             latest_experience_amount = 0
-            best_model_mcts_trees = []
+
