@@ -68,38 +68,6 @@ def last_iteration_name(
     )
 
 
-def last_iteration_inferences(
-    run_path: str, not_exist_ok: bool = True
-) -> Optional[Dict[str, Tuple[np.ndarray, float]]]:
-    try:
-        with open(
-            os.path.join(
-                run_path,
-                last_iteration_name(run_path),
-                ConfigPath.saved_inferences_name,
-            ),
-            "rb",
-        ) as f:
-            state_priors_value = pickle.load(f)
-    except FileNotFoundError as e:
-        if not_exist_ok:
-            return None
-        raise e
-    return state_priors_value
-
-
-def save_inferences(
-    inferences: List[Dict[str, Tuple[np.ndarray, float]]], dir_path: str
-):
-    # dictionary mapping an input state to the inferred priors and value
-    state_priors_value = {}
-    for mcts_state_priors_value in inferences:
-        state_priors_value.update(mcts_state_priors_value)
-    os.makedirs(dir_path, exist_ok=True)
-    with open(os.path.join(dir_path, ConfigPath.saved_inferences_name), "wb") as f:
-        pickle.dump(state_priors_value, f)
-
-
 def visualize_mcts_iteration(
     mcts_visualizer: MctsVisualizer, iteration_path: str, run_id: Optional[str] = None,
 ):

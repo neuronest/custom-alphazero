@@ -3,15 +3,13 @@ import os
 import time
 import random
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 from functools import partial
 from datetime import datetime
 
 from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
 from src.utils import (
     last_saved_model,
-    last_iteration_inferences,
-    save_inferences,
     visualize_mcts_iteration,
 )
 from src.mcts.mcts import MCTS
@@ -34,11 +32,16 @@ if ConfigGeneral.run_with_http:
 else:
     from src.model.tensorflow.train import train_run_samples_local
     from src.utils import LocalState
+
     train_run_samples = partial(train_run_samples_local, local_state=LocalState())
 
 
 def play_game(
-    process_id: int, all_possible_moves: List[Move], mcts_iterations: int, run_id: str
+    process_id: int,
+    all_possible_moves: List[Move],
+    mcts_iterations: int,
+    run_id: str,
+    plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
     # we seed each process with an unique value to ensure each MCTS will be different
     np.random.seed(int((process_id + 1) * time.time()) % (2 ** 32 - 1))
@@ -48,17 +51,13 @@ def play_game(
         )
     else:
         model = None
-    state_priors_value = last_iteration_inferences(
-        os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id),
-        not_exist_ok=True,
-    )
     mcts = MCTS(
         board=Board(),
         all_possible_moves=all_possible_moves,
         concurrency=ConfigGeneral.concurrency,
         use_solver=ConfigMCTS.use_solver,
         model=model,
-        state_priors_value=state_priors_value,
+        state_priors_value=plays_inferences,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
@@ -86,13 +85,16 @@ def play_game(
     return states_game, policies_game, rewards_game, mcts
 
 
-def play(run_id: str,) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
+def play(
+    run_id: str, plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
     if ConfigGeneral.mono_process:
         states, policies, rewards, mcts_tree = play_game(
             process_id=0,
             all_possible_moves=get_all_possible_moves(),
             mcts_iterations=ConfigGeneral.mcts_iterations,
             run_id=run_id,
+            plays_inferences=plays_inferences,
         )
         mcts_trees = [mcts_tree]
     else:
@@ -104,6 +106,7 @@ def play(run_id: str,) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
                 all_possible_moves=get_all_possible_moves(),
                 mcts_iterations=ConfigGeneral.mcts_iterations,
                 run_id=run_id,
+                plays_inferences=plays_inferences,
             ),
             range(processes),
         )
@@ -150,19 +153,22 @@ if __name__ == "__main__":
     mcts_visualizer = MctsVisualizer(is_updated=False)
     states_queue = policies_queue = rewards_queue = None
     latest_experience_amount = 0
-    best_model_mcts_trees = []
     print(f"Starting run with id={run_id}")
     if not ConfigGeneral.mono_process:
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
         multiprocessing.set_start_method("spawn")
+        plays_inferences = multiprocessing.Manager().dict()
+    else:
+        plays_inferences = {}
     for _ in range(ConfigGeneral.training_iterations):
         starting_time = time.time()
-        states, policies, rewards, mcts_trees = play(run_id)
+        states, policies, rewards, mcts_trees = play(
+            run_id, plays_inferences=plays_inferences
+        )
         # we choose a MCST tree randomly to be traced afterwards
         # each tree results from a fixed state of the neural network, so there is no need to keep them all
         mcts_tree = random.choice(mcts_trees)
-        best_model_mcts_trees += mcts_trees
         latest_experience_amount += len(states)
         if any(
             sample is None for sample in [states_queue, policies_queue, rewards_queue]
@@ -209,14 +215,14 @@ if __name__ == "__main__":
                 print(
                     f"Run {run_id}, model has been updated and saved at {iteration_path}"
                 )
-                best_model_mcts_trees = []
+                plays_inferences = (
+                    {}
+                    if ConfigGeneral.mono_process
+                    else multiprocessing.Manager().dict()
+                )
             else:
                 print(
                     f"Run {run_id}, model has not been updated, saving mcts trees inferences for reuse"
-                )
-                save_inferences(
-                    [mcts.state_priors_value for mcts in best_model_mcts_trees],
-                    iteration_path,
                 )
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
@@ -228,4 +234,3 @@ if __name__ == "__main__":
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None
             latest_experience_amount = 0
-
