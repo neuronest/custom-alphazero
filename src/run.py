@@ -226,11 +226,13 @@ if __name__ == "__main__":
                 )
             print(f"Current loss: {loss:.5f}")
             # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
-            mcts_visualizer.build_mcts_graph(
-                mcts_tree.root, mcts_name=f"mcts_iteration_{iteration}"
+            visualize_mcts_iteration(
+                mcts_visualizer=mcts_visualizer,
+                mcts_tree=mcts_tree,
+                mcts_name=f"mcts_iteration_{iteration}",
+                iteration_path=iteration_path,
+                run_id=run_id,
             )
-            visualize_mcts_iteration(mcts_visualizer, iteration_path, run_id=run_id)
-            # todo: add light version of visualization with name f"mcts_iteration_light_{iteration}"
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None
             latest_experience_amount = 0
