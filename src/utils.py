@@ -84,16 +84,14 @@ def visualize_mcts_iteration(
         assert run_id is not None
         # save light mcts also under updated mcts directory path
         updated_mcts_dir_path = os.path.join(
-                ConfigPath.results_path,
-                ConfigGeneral.game,
-                run_id,
-                ConfigPath.updated_mcts_dir,
-            )
+            ConfigPath.results_path,
+            ConfigGeneral.game,
+            run_id,
+            ConfigPath.updated_mcts_dir,
+        )
         mcts_visualizer.save_as_pdf(directory=updated_mcts_dir_path)
         # save full mcts if it is an updated tree, even if save is slower
         mcts_visualizer.build_mcts_graph(
             mcts_tree.root, mcts_name=f"{mcts_name}_full", remove_unplayed_edge=False
         )
-        mcts_visualizer.save_as_pdf(
-            directory=updated_mcts_dir_path
-        )
+        mcts_visualizer.save_as_pdf(directory=updated_mcts_dir_path)
