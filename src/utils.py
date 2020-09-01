@@ -1,11 +1,8 @@
 import os
-import pickle
-import numpy as np
-from typing import Tuple, Dict, Optional, List
+from typing import Optional
 from functools import partial
 
 from src.config import ConfigModel, ConfigPath, ConfigGeneral
-from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
 from src.model.tensorflow.model import PolicyValueModel
 
