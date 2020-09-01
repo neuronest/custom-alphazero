@@ -10,7 +10,7 @@ class MctsVisualizer:
         mcts_name="mcts",
         show_node_index=True,
         remove_unplayed_edge=False,
-        is_updated=False
+        is_updated=False,
     ):
         self.mcts_root_node = mcts_root_node
         self.mcts_name = mcts_name
@@ -23,11 +23,15 @@ class MctsVisualizer:
             MctsVisualizer._enrich_edges(self.edges)
             self.graph_mcts = self.mcts_graph(remove_unvisited=True)
 
-    def build_mcts_graph(self, mcts_root_node, mcts_name=None):
+    def build_mcts_graph(
+        self, mcts_root_node, mcts_name=None, remove_unplayed_edge=False
+    ):
         self.mcts_root_node = mcts_root_node
+        self.mcts_name = mcts_name if mcts_name is not None else self.mcts_name
+        self.remove_unplayed_edge = remove_unplayed_edge
         self.edges = MctsVisualizer._breadth_first_edges(self.mcts_root_node)
         MctsVisualizer._enrich_edges(self.edges)
-        self.graph_mcts = self.mcts_graph(remove_unvisited=True, mcts_name=mcts_name)
+        self.graph_mcts = self.mcts_graph(remove_unvisited=True)
 
     @staticmethod
     def _breadth_first_edges(root_node):
@@ -98,7 +102,7 @@ class MctsVisualizer:
                     )
                 nodes_analyzed.add(id(node))
 
-    def mcts_graph(self, remove_unvisited=True, mcts_name=None):
+    def mcts_graph(self, remove_unvisited=True):
         edges = (
             [edge for edge in self.edges if edge.visit_count > 0]
             if remove_unvisited
@@ -109,8 +113,7 @@ class MctsVisualizer:
             if self.remove_unplayed_edge
             else edges
         )
-        mcts_name = mcts_name if mcts_name is not None else self.mcts_name
-        graph_mcts = Digraph("G", filename=f"{mcts_name}.gv")
+        graph_mcts = Digraph("G", filename=f"{self.mcts_name}.gv")
         for edge in edges:
             graph_mcts.edge(
                 self._describe_node(edge.parent),
