@@ -90,11 +90,11 @@ def train_and_report(
                 writer.flush()
         if score >= ConfigServing.replace_min_score:
             print(
-                f"The current model is better, saving best model trained at {iteration_path} ..."
+                f"The current model is better, saving best model trained at {iteration_path}..."
             )
         else:
             print(
-                f"The previous model was better, saving best model {iteration_path} ..."
+                f"The previous model was better, saving best model {iteration_path}..."
             )
         best_model.save_with_meta(iteration_path)
         # we reinstantiate the best model to guarantee the fact it does not have the same reference as the last model
