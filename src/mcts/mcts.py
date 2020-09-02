@@ -92,7 +92,7 @@ class MCTS:
         concurrency: bool,
         model: Optional[PolicyValueModel] = None,
         use_solver: bool = False,
-        state_priors_value: Optional[dict] = None,
+        plays_inferences: Optional[dict] = None,
     ) -> None:
         self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
@@ -102,9 +102,7 @@ class MCTS:
         self.path_cache = []
         self.model = model
         self.use_solver = use_solver
-        self.state_priors_value = (
-            {} if state_priors_value is None else state_priors_value
-        )
+        self.plays_inferences = {} if plays_inferences is None else plays_inferences
 
     def initialize_root(self) -> UCTNode:
         return UCTNode(edges=[], board=deepcopy(self.board))
@@ -121,15 +119,17 @@ class MCTS:
         return current_node
 
     def _priors_value_from_board(self, board: Board) -> Tuple[np.ndarray, float]:
-        if repr(board) in self.state_priors_value:
-            probabilities, value = self.state_priors_value[repr(board)]
+        if repr(board) in self.plays_inferences:
+            probabilities, value = self.plays_inferences[repr(board)]
         else:
             if self.use_solver:
                 probabilities, value = exact_policy_and_value(
                     board, all_possible_moves=self.all_possible_moves
                 )
             elif self.model is not None:
-                probabilities, value = self.model(np.expand_dims(board.full_state, axis=0))
+                probabilities, value = self.model(
+                    np.expand_dims(board.full_state, axis=0)
+                )
                 probabilities, value = (
                     probabilities.numpy().ravel(),
                     value.numpy().item(),
@@ -138,7 +138,7 @@ class MCTS:
                 probabilities, value = infer_sample(
                     board.full_state, concurrency=self.concurrency
                 )
-            self.state_priors_value[repr(board)] = probabilities, value
+            self.plays_inferences[repr(board)] = probabilities, value
         return probabilities, value
 
     def evaluate_and_expand(self, node: UCTNode) -> float:

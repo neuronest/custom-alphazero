@@ -57,7 +57,7 @@ def play_game(
         concurrency=ConfigGeneral.concurrency,
         use_solver=ConfigMCTS.use_solver,
         model=model,
-        state_priors_value=plays_inferences,
+        plays_inferences=plays_inferences,
     )
     states_game, policies_game = [], []
     while not mcts.board.is_game_over():
