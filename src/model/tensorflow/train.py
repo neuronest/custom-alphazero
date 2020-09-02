@@ -76,7 +76,8 @@ def train_and_report(
     # if not evaluated the model to train next time will be the one that has trained even if it is weaker
     # if evaluated the best model will take part in the next training
     if (iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
-        # model at max iteration name path will be used for evaluation so it has to be the doing the self-play
+        # model location at max iteration name path will be used for evaluation against last_model
+        # so it has to be the one doing the self-play
         best_model, score, solver_score = evaluate_against_last_model(
             current_model=last_model,
             run_path=run_path,
@@ -85,16 +86,18 @@ def train_and_report(
         )
         if solver_score is not None:
             with writer.as_default():
-                tf.summary.scalar(
-                    "solver score", solver_score, step=iteration
-                )
+                tf.summary.scalar("solver score", solver_score, step=iteration)
                 writer.flush()
         if score >= ConfigServing.replace_min_score:
-            print("The current model is better, saving best model trained ...")
+            print(
+                f"The current model is better, saving best model trained at {iteration_path}..."
+            )
         else:
-            print("The previous model was better, saving best model...")
+            print(
+                f"The previous model was better, saving best model {iteration_path}..."
+            )
         best_model.save_with_meta(iteration_path)
-        # we reinstantiate the best model the guarantee the fact it has not the same reference as the last model
+        # we reinstantiate the best model to guarantee the fact it does not have the same reference as the last model
         best_model = init_model(iteration_path)
         with writer.as_default():
             tf.summary.scalar(
@@ -105,7 +108,7 @@ def train_and_report(
             writer.flush()
         updated = score >= ConfigServing.replace_min_score
     else:
-        # model not evaluated so the last model that has done the self-play phase is loaded and saved at iteration_path
+        # model not evaluated so the last model that has done the self-play is loaded and saved at iteration_path
         # to take part in the next self-play phase
         best_model = last_saved_model(run_path)
         best_model.save_with_meta(iteration_path)
