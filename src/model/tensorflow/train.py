@@ -4,10 +4,11 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from src.config import ConfigServing, ConfigPath, ConfigModel, ConfigGeneral
-from src.serving.evaluate import evaluate_against_last_model
+from src import paths
+from src.config import ConfigServing, ConfigModel
+from src.evaluation.evaluate import evaluate_two_models
 from src.model.tensorflow.model import PolicyValueModel
-from src.utils import LocalState, last_saved_model, init_model
+from src.utils import best_saved_model
 
 
 def train(
@@ -44,109 +45,70 @@ def train(
 
 
 def train_and_report(
+    run_id: str,
     last_model: PolicyValueModel,
-    inputs: np.ndarray,
-    policy_labels: np.ndarray,
-    value_labels: np.ndarray,
-    run_path: str,
-    iteration_path: str,
-    tensorboard_path: str,
-    iteration: int,
-    number_samples: int,
-) -> Tuple[PolicyValueModel, PolicyValueModel, float, bool]:
-    updated = False
+    states_batch: np.ndarray,
+    policies_batch: np.ndarray,
+    values_batch: np.ndarray,
+    training_iteration: int,
+    evaluation_iteration: int,
+) -> Tuple[bool, bool]:
+    tensorboard_path = paths.get_tensorboard_path(run_id)
+    os.makedirs(tensorboard_path, exist_ok=True)
     writer = tf.summary.create_file_writer(tensorboard_path)
     loss = train(
         last_model,
-        inputs,
-        [policy_labels, value_labels],
-        epochs=ConfigServing.training_epochs,
-        batch_size=ConfigServing.batch_size,
+        states_batch,
+        [policies_batch, values_batch],
+        epochs=ConfigModel.training_epochs,
+        batch_size=ConfigModel.batch_size,
     )
+    if (training_iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
+        last_model.save_with_meta(paths.get_training_path(run_id))
     with writer.as_default():
-        tf.summary.scalar("loss", loss, step=iteration)
+        tf.summary.scalar("loss", loss, step=training_iteration)
+        tf.summary.scalar("steps", last_model.steps, step=training_iteration)
         tf.summary.scalar(
-            "number of samples", number_samples, step=iteration,
-        )
-        tf.summary.scalar("steps", last_model.steps, step=iteration)
-        tf.summary.scalar(
-            "learning rate", last_model.get_learning_rate(), step=iteration
+            "learning rate", last_model.get_learning_rate(), step=training_iteration
         )
         writer.flush()
-    # if not evaluated the model to train next time will be the one that has trained even if it is weaker
-    # if evaluated the best model will take part in the next training
-    if (iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
-        # model location at max iteration name path will be used for evaluation against last_model
-        # so it has to be the one doing the self-play
-        best_model, score, solver_score = evaluate_against_last_model(
-            current_model=last_model,
-            run_path=run_path,
+    is_evaluated = (
+        training_iteration + 1
+    ) % ConfigServing.model_evaluation_frequency == 0
+    if is_evaluated:
+        previous_model = best_saved_model(
+            run_id
+        )  # best model so far, is going to be challenged in this iteration
+        new_evaluation_path = paths.get_evaluation_iteration_path(
+            run_id, evaluation_iteration
+        )
+        os.makedirs(new_evaluation_path, exist_ok=True)
+        score, solver_score = evaluate_two_models(
+            model=last_model,
+            other_model=previous_model,
             evaluate_with_mcts=ConfigServing.evaluate_with_mcts,
             evaluate_with_solver=ConfigServing.evaluate_with_solver,
         )
-        if solver_score is not None:
-            with writer.as_default():
-                tf.summary.scalar("solver score", solver_score, step=iteration)
-                writer.flush()
-        if score >= ConfigServing.replace_min_score:
+        is_updated = score >= ConfigServing.replace_min_score
+        if is_updated:
             print(
-                f"The current model is better, saving best model trained at {iteration_path}..."
+                f"The current model is better, saving best model trained at {new_evaluation_path}..."
             )
+            last_model.save_with_meta(new_evaluation_path)
         else:
             print(
-                f"The previous model was better, saving best model {iteration_path}..."
+                f"The previous model was better, saving best model at {new_evaluation_path}..."
             )
-        best_model.save_with_meta(iteration_path)
-        # we reinstantiate the best model to guarantee the fact it does not have the same reference as the last model
-        best_model = init_model(iteration_path)
+            previous_model.save_with_meta(new_evaluation_path)
         with writer.as_default():
             tf.summary.scalar(
-                "last model winning score",
-                score,
-                step=iteration // ConfigServing.model_checkpoint_frequency,
+                "last model winning score", score, step=evaluation_iteration,
             )
+            if solver_score is not None:
+                tf.summary.scalar(
+                    "solver score", solver_score, step=evaluation_iteration
+                )
             writer.flush()
-        updated = score >= ConfigServing.replace_min_score
     else:
-        # model not evaluated so the last model that has done the self-play is loaded and saved at iteration_path
-        # to take part in the next self-play phase
-        best_model = last_saved_model(run_path)
-        best_model.save_with_meta(iteration_path)
-    if (iteration + 1) % ConfigServing.samples_checkpoint_frequency == 0:
-        print("Saving current samples...")
-        np.savez(
-            os.path.join(iteration_path, ConfigPath.samples_name),
-            states=inputs,
-            policies=policy_labels,
-            values=value_labels,
-        )
-    return last_model, best_model, loss, updated
-
-
-def train_run_samples_local(
-    local_state: LocalState, run_id: str, states: np.ndarray, labels: List[np.ndarray]
-) -> Tuple[float, bool, int]:
-    policies, values = labels
-    local_state.number_samples += len(states)
-    run_path = os.path.join(ConfigPath.results_path, ConfigGeneral.game, run_id)
-    iteration_path = os.path.join(run_path, f"iteration_{local_state.iteration}")
-    tensorboard_path = os.path.join(run_path, ConfigPath.tensorboard_endpath)
-    os.makedirs(iteration_path, exist_ok=True)
-    os.makedirs(tensorboard_path, exist_ok=True)
-    # returned model is trained model, best model can be different
-    last_model, best_model, loss, updated = train_and_report(
-        local_state.last_model,
-        states,
-        policies,
-        values,
-        run_path,
-        iteration_path,
-        tensorboard_path,
-        local_state.iteration,
-        local_state.number_samples,
-    )
-    local_state.last_model = last_model
-    local_state.best_model = best_model
-    iteration = local_state.iteration
-    local_state.iteration += 1
-    return loss, updated, iteration
+        is_updated = False
+    return is_evaluated, is_updated
