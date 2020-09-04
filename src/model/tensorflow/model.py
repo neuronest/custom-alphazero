@@ -8,7 +8,7 @@ from tensorflow.keras.layers import Layer, Flatten, Dense
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.regularizers import l2
 
-from src.config import ConfigModel
+from src.config import ConfigModel, ConfigPath
 from src.model.tensorflow.base_layers import InnerConvBlock, OuterConvBlock
 from src.model.tensorflow.base_layers import policy_loss, value_loss
 
@@ -183,25 +183,28 @@ class PolicyValueModel(Model):
         return policy_outputs, value_outputs
 
     def load_with_meta(self, path):
-        self.load_weights(os.path.join(path, ConfigModel.model_suffix))
-        with open(os.path.join(path, ConfigModel.model_meta), "r") as fp:
+        assert os.path.exists(
+            os.path.join(path, ConfigPath.model_success)
+        ), f"No verification file of the model found at {path}!"
+        self.load_weights(os.path.join(path, ConfigPath.model_prefix))
+        with open(os.path.join(path, ConfigPath.model_meta), "r") as fp:
             metadata = json.load(fp)
         self.steps = int(metadata.get("steps"))
         self.update_learning_rate(float(metadata.get("learning_rate")))
-        try:
-            assert self.hash == metadata.get("hash")
-        except AssertionError:
-            print(f"Unexpected weights hash recovered during model loading at {path}!")
+        assert self.hash == metadata.get(
+            "hash"
+        ), "Unexpected weights hash recovered during model loading at {path}!"
 
     def save_with_meta(self, path):
-        self.save_weights(os.path.join(path, ConfigModel.model_suffix))
+        self.save_weights(os.path.join(path, ConfigPath.model_prefix))
         metadata = {
             "steps": int(self.steps),
             "learning_rate": self.get_learning_rate(),
             "hash": self.hash,
         }
-        with open(os.path.join(path, ConfigModel.model_meta), "w") as fp:
+        with open(os.path.join(path, ConfigPath.model_meta), "w") as fp:
             json.dump(metadata, fp, sort_keys=True, indent=4)
+        open(os.path.join(path, ConfigPath.model_success), "wb").close()
 
     def get_learning_rate(self) -> float:
         return float(self.optimizer.learning_rate.numpy())
