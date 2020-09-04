@@ -18,7 +18,6 @@ class ConfigSelfPlay:
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
     samples_checkpoint_frequency = 1
     mcts_iterations = 250
-    self_play_iterations = 100000
 
 
 class ConfigChess:
