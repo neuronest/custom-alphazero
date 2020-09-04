@@ -13,14 +13,21 @@ class ModelInferenceOutputs(BaseModel):
     value: float = Field(..., title="State value")
 
 
-class ModelTrainingInputs(BaseModel):
+class ModelGetRunIdOutputs(BaseModel):
     run_id: str = Field(..., title="Identifier of the run, usually a timestamp")
+
+
+class ModelRetrieveQueueOutputs(BaseModel):
     states: List[List[List[List[float]]]] = Field(..., title="Board state samples")
     policies: List[List[float]] = Field(..., title="Policies samples")
     values: List[float] = Field(..., title="Values samples")
 
 
-class ModelTrainingOutputs(BaseModel):
-    loss: float = Field(..., title="Loss value on the current batch")
-    updated: bool = Field(..., title="Whether of not the model has been updated")
-    iteration: int = Field(..., title="Model iteration")
+class ModelAppendQueueInputs(BaseModel):
+    states: List[List[List[List[float]]]] = Field(..., title="Board state samples")
+    policies: List[List[float]] = Field(..., title="Policies samples")
+    values: List[float] = Field(..., title="Values samples")
+
+
+class ModelGetQueueSizeOutputs(BaseModel):
+    queue_size: int = Field(..., title="Queue size")
