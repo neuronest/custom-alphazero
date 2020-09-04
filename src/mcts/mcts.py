@@ -90,19 +90,19 @@ class MCTS:
         board: Board,
         all_possible_moves: List[Move],
         concurrency: bool,
+        plays_inferences: dict,
         model: Optional[PolicyValueModel] = None,
         use_solver: bool = False,
-        plays_inferences: Optional[dict] = None,
     ) -> None:
         self.board = deepcopy(board)
         self.all_possible_moves = all_possible_moves
         self.concurrency = concurrency
+        self.plays_inferences = plays_inferences
+        self.model = model
+        self.use_solver = use_solver
         self.root = self.initialize_root()
         self.current_root = self.root
         self.path_cache = []
-        self.model = model
-        self.use_solver = use_solver
-        self.plays_inferences = {} if plays_inferences is None else plays_inferences
 
     def initialize_root(self) -> UCTNode:
         return UCTNode(edges=[], board=deepcopy(self.board))
