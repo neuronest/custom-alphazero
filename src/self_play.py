@@ -154,18 +154,11 @@ if __name__ == "__main__":
             print("Samples saved")
         append_queue(states, policies, rewards)
         # we pick the previously chosen MCTS tree to visualize it and save it under iteration name
-        mcts_visualizer.build_mcts_graph(
-            mcts_tree.root, mcts_name=f"mcts_iteration_{self_play_iteration}"
-        )
         visualize_mcts_iteration(
             mcts_visualizer,
             mcts_tree=mcts_tree,
-            mcts_name=f"mcts_iteration_{self_play_iteration}",
-            iteration_path=paths.get_self_play_iteration_path(
-                run_id, self_play_iteration
-            ),
+            iteration=self_play_iteration,
             run_id=run_id,
         )
-        # todo: add light version of visualization with name f"mcts_iteration_light_{iteration}"
         mcts_visualizer = MctsVisualizer(is_updated=False)
         self_play_iteration += 1
