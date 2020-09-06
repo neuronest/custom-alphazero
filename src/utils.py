@@ -1,4 +1,6 @@
 import os
+import json
+import multiprocessing
 from typing import Optional, Union
 from functools import partial
 
@@ -31,6 +33,10 @@ def create_all_directories(run_id: str):
         paths.get_tensorboard_path(run_id),
     ]:
         os.makedirs(directory, exist_ok=True)
+
+
+def reset_plays_inferences_dict() -> dict:
+    return {} if ConfigGeneral.mono_process else multiprocessing.Manager().dict()
 
 
 def init_model(path: Optional[str] = None) -> PolicyValueModel:
@@ -66,6 +72,25 @@ def best_saved_model(run_id: str) -> PolicyValueModel:
     return model
 
 
+def best_saved_model_hash(run_id: str) -> Optional[str]:
+    # max_iteration_name folder should contain the last evaluation model, which is the best model so far
+    evaluation_path = paths.get_evaluation_path(run_id)
+    try:
+        max_iteration_name = last_evaluation_iteration_name(evaluation_path)
+        with open(
+            os.path.join(evaluation_path, max_iteration_name, ConfigPath.model_meta),
+            "r",
+        ) as fp:
+            model_hash = json.loads(fp.read()).get("hash")
+    except ValueError:
+        print(
+            f"Warning: no model hash found at {evaluation_path}, returning None instead\n"
+            f"This warning can safely be ignored if the run is just beginning"
+        )
+        model_hash = None
+    return model_hash
+
+
 def last_evaluation_iteration_name(
     evaluation_path: str, prefix: str = "iteration", sep: str = "_"
 ) -> str:
@@ -90,12 +115,12 @@ def last_evaluation_iteration_name(
 
 
 def visualize_mcts_iteration(
-    mcts_visualizer: MctsVisualizer,
-    mcts_tree: MCTS,
-    iteration: int,
-    run_id: str,
+    mcts_visualizer: MctsVisualizer, mcts_tree: MCTS, iteration: int, run_id: str,
 ) -> None:
-    mcts_name_full, mcts_name_light = f"mcts_iteration_{iteration}_full", f"mcts_iteration_{iteration}_light"
+    mcts_name_full, mcts_name_light = (
+        f"mcts_iteration_{iteration}_full",
+        f"mcts_iteration_{iteration}_light",
+    )
     iteration_path = paths.get_self_play_iteration_path(run_id, iteration)
     updated_mcts_path = paths.get_self_play_updated_mcts_path(run_id)
     # by default save only mcts played edges so that save is fast

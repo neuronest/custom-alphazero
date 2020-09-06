@@ -10,7 +10,9 @@ from src import paths
 from src.config import ConfigGeneral, ConfigMCTS, ConfigSelfPlay
 from src.utils import (
     set_gpu_index,
+    reset_plays_inferences_dict,
     best_saved_model,
+    best_saved_model_hash,
     visualize_mcts_iteration,
 )
 from src.mcts.mcts import MCTS
@@ -35,7 +37,7 @@ def play_game(
     all_possible_moves: List[Move],
     mcts_iterations: int,
     run_id: str,
-    plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None
+    plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, MCTS]:
     # we seed each process with an unique value to ensure each MCTS will be different
     np.random.seed(int((process_id + 1) * time.time()) % (2 ** 32 - 1))
@@ -78,7 +80,7 @@ def play_game(
 
 
 def play(
-        run_id: str, plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None
+    run_id: str, plays_inferences: Optional[Dict[str, Tuple[np.ndarray, float]]] = None
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[MCTS]]:
     if ConfigGeneral.mono_process:
         states, policies, rewards, mcts_tree = play_game(
@@ -86,7 +88,7 @@ def play(
             all_possible_moves=get_all_possible_moves(),
             mcts_iterations=ConfigSelfPlay.mcts_iterations,
             run_id=run_id,
-            plays_inferences=plays_inferences
+            plays_inferences=plays_inferences,
         )
         mcts_trees = [mcts_tree]
     else:
@@ -98,7 +100,7 @@ def play(
                 all_possible_moves=get_all_possible_moves(),
                 mcts_iterations=ConfigSelfPlay.mcts_iterations,
                 run_id=run_id,
-                plays_inferences=plays_inferences
+                plays_inferences=plays_inferences,
             ),
             range(processes),
         )
@@ -120,20 +122,25 @@ if __name__ == "__main__":
         # https://bugs.python.org/issue33725
         # https://stackoverflow.com/a/47852388/5490180
         multiprocessing.set_start_method("spawn")
-        plays_inferences = multiprocessing.Manager().dict()
-    else:
-        plays_inferences = {}
+    plays_inferences = reset_plays_inferences_dict()
     mcts_visualizer = MctsVisualizer(is_updated=False)
     run_id = get_run_id()
     assert run_id is not None, "Could not get the run if from the server"
     print(f"Starting self play with id={run_id}")
     self_play_iteration = 0
+    previous_best_model_hash = None
     while True:
         starting_time = time.time()
         os.makedirs(
             paths.get_self_play_iteration_path(run_id, self_play_iteration),
             exist_ok=True,
         )
+        current_best_model_hash = best_saved_model_hash(
+            run_id
+        )  # returns None if there is no best model yet
+        if previous_best_model_hash != current_best_model_hash:
+            plays_inferences = reset_plays_inferences_dict()
+            previous_best_model_hash = current_best_model_hash
         states, policies, rewards, mcts_trees = play(
             run_id, plays_inferences=plays_inferences
         )
