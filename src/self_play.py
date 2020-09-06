@@ -123,12 +123,13 @@ if __name__ == "__main__":
         # https://stackoverflow.com/a/47852388/5490180
         multiprocessing.set_start_method("spawn")
     plays_inferences = reset_plays_inferences_dict()
-    mcts_visualizer = MctsVisualizer(is_updated=False)
     run_id = get_run_id()
     assert run_id is not None, "Could not get the run if from the server"
     print(f"Starting self play with id={run_id}")
     self_play_iteration = 0
     previous_best_model_hash = None
+    is_best_model_updated = False
+    mcts_visualizer = MctsVisualizer(is_updated=is_best_model_updated)
     while True:
         starting_time = time.time()
         os.makedirs(
@@ -141,6 +142,9 @@ if __name__ == "__main__":
         if previous_best_model_hash != current_best_model_hash:
             plays_inferences = reset_plays_inferences_dict()
             previous_best_model_hash = current_best_model_hash
+            is_best_model_updated = True
+        else:
+            is_best_model_updated = False
         states, policies, rewards, mcts_trees = play(
             run_id, plays_inferences=plays_inferences
         )
@@ -167,5 +171,5 @@ if __name__ == "__main__":
             iteration=self_play_iteration,
             run_id=run_id,
         )
-        mcts_visualizer = MctsVisualizer(is_updated=False)
+        mcts_visualizer = MctsVisualizer(is_updated=is_best_model_updated)
         self_play_iteration += 1
