@@ -6,6 +6,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = tensorflow_log_level
 
 class ConfigGeneral:
     game = "connect_n"
+    # -1 is used to disable the GPU
+    # other values should be used only once
     self_play_gpu_index = "-1"
     serving_gpu_index = "-1"
     training_gpu_index = "0"
