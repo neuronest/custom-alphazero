@@ -1,12 +1,11 @@
 import requests
 import json
 import uuid
-import asyncio
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, Optional
 
 from src.config import ConfigGeneral, ConfigServing, ConfigPath
-from src.model.tensorflow.model import PolicyValueModel
+
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -17,66 +16,6 @@ elif ConfigGeneral.game == "connect_n":
     get_all_possible_moves = Board.get_all_possible_moves
 else:
     raise NotImplementedError
-
-
-class InferenceBatch:
-    def __init__(self, model: PolicyValueModel, batch_size: int):
-        self.model = model
-        self.batch_size = batch_size
-        self.is_not_complete = asyncio.Event()
-        self.is_complete = asyncio.Event()
-        self.lock = asyncio.Lock()
-        self.batch = {}
-        self.predictions = {}
-        self.is_not_complete.set()
-
-    @staticmethod
-    async def event_with_timeout(event, timeout):
-        try:
-            await asyncio.wait_for(event.wait(), timeout)
-        except asyncio.TimeoutError:
-            pass
-        return event.is_set()
-
-    async def store(self, uid: str, state: np.ndarray):
-        await self.is_not_complete.wait()
-        self.batch[uid] = state
-        if len(self.batch) >= self.batch_size:
-            self.is_not_complete.clear()
-            self.is_complete.set()
-
-    async def predict(self):
-        await self.event_with_timeout(
-            self.is_complete, ConfigServing.inference_timeout / 10
-        )
-        await self.lock.acquire()
-        if not self.predictions:
-            array_batch = np.stack([array for array in self.batch.values()])
-            probabilities_batch, values_batch = self.model(array_batch)
-            probabilities_batch, values_batch = (
-                probabilities_batch.numpy().tolist(),
-                values_batch.numpy().ravel().tolist(),
-            )
-            for uid, probabilities, values in zip(
-                self.batch.keys(), probabilities_batch, values_batch
-            ):
-                self.predictions[uid] = {
-                    "probabilities": probabilities,
-                    "values": values,
-                }
-        self.lock.release()
-
-    def get_prediction(self, uid: str):
-        self.batch.pop(uid, None)
-        return self.predictions.pop(uid, None)
-
-    def reset(self):
-        if not len(self.predictions):
-            self.is_not_complete.set()
-            self.is_complete.clear()
-
-    def update_model(self, model: PolicyValueModel):
-        self.model = model
 
 
 def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, float]:
@@ -116,25 +55,63 @@ def infer_sample(state: np.ndarray, concurrency: bool) -> Tuple[np.ndarray, floa
     return np.asarray(response_content["probabilities"]), response_content["value"]
 
 
-def train_run_samples_post(
-    run_id: str, states: np.ndarray, labels: List[np.ndarray]
-) -> Tuple[float, bool, int]:
+def get_run_id() -> Optional[str]:
+    response = requests.get(url=ConfigServing.serving_address + ConfigPath.run_id_path,)
+    try:
+        response_content = json.loads(response.content)
+    except json.decoder.JSONDecodeError:
+        return None
+    return response_content.get("run_id")
+
+
+def append_queue(states: np.ndarray, policies: np.ndarray, values: np.ndarray):
     headers = {"content-type": "application/octet-stream"}
-    policies, values = labels
     data = {
-        "run_id": run_id,
         "states": states.tolist(),
         "policies": policies.tolist(),
         "values": values.tolist(),
     }
-    response = requests.post(
-        url=ConfigServing.serving_address + ConfigPath.training_path,
+    requests.patch(
+        url=ConfigServing.serving_address + ConfigPath.append_queue_path,
         data=json.dumps(data),
         headers=headers,
     )
-    response_content = json.loads(response.content)
-    return (
-        response_content["loss"],
-        response_content["updated"],
-        response_content["iteration"],
+
+
+def retrieve_queue() -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    headers = {"content-type": "application/octet-stream"}
+    response = requests.put(
+        url=ConfigServing.serving_address + ConfigPath.retrieve_queue_path,
+        data={},
+        headers=headers,
     )
+    try:
+        response_content = json.loads(response.content)
+    except json.decoder.JSONDecodeError:
+        return None
+    states, policies, values = (
+        np.asarray(response_content.get("states")),
+        np.asarray(response_content.get("policies")),
+        np.asarray(response_content.get("values")),
+    )
+    return states, policies, values
+
+
+def update_best_model():
+    headers = {"content-type": "application/octet-stream"}
+    requests.put(
+        url=ConfigServing.serving_address + ConfigPath.update_best_model_path,
+        data={},
+        headers=headers,
+    )
+
+
+def get_queue_size() -> Optional[int]:
+    response = requests.get(
+        url=ConfigServing.serving_address + ConfigPath.size_queue_path,
+    )
+    try:
+        response_content = json.loads(response.content)
+    except json.decoder.JSONDecodeError:
+        return None
+    return response_content.get("queue_size")

@@ -1,20 +1,21 @@
 import numpy as np
 from fastapi import APIRouter, Body, Request
 
-from src.serving.schema import ModelInferenceInputs, ModelInferenceOutputs
-from src.serving.example import InferenceExample
+from src.serving.schemas.schemas import ModelInferenceInputs, ModelInferenceOutputs
+from src.serving.schemas.example import InferenceExample
 
 router = APIRouter()
 
 
 @router.post("", response_model=ModelInferenceOutputs, name="inference")
-async def post(
+async def inference(
     request: Request,
     inputs: ModelInferenceInputs = Body(..., example=InferenceExample.inputs),
 ):
-    best_model = request.app.state.best_model
+    assert request.app.state.run_id is not None
     inference_batch = request.app.state.inference_batch
-    inference_batch.update_model(best_model)
+    inference_batch.update_model(request.app.state.best_model)
+    best_model = request.app.state.best_model
     data = inputs.dict()
     uid = data.pop("uid")
     state = np.asarray(data.pop("state"))

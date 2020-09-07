@@ -25,7 +25,7 @@ def evaluate_boards_with_solution(boards_as_list_moves: str) -> Optional[List[in
     number_of_boards = len(boards_as_list_moves.split("\n")) - 1
     try:
         solver_output = subprocess.run(
-            [ConfigPath.connect4_solver_path, "-b", ConfigPath.connect4_opening_book],
+            [ConfigPath.connect4_solver_bin, "-b", ConfigPath.connect4_opening_book],
             stdout=subprocess.PIPE,
             input=boards_as_list_moves.encode("utf-8"),
         ).stdout.decode()

@@ -1,10 +1,9 @@
 import numpy as np
 from typing import Tuple, List, Optional
 
-from src.config import ConfigGeneral, ConfigMCTS, ConfigServing
+from src.config import ConfigGeneral, ConfigMCTS, ConfigServing, ConfigSelfPlay
 from src.mcts.mcts import MCTS
 from src.model.tensorflow.model import PolicyValueModel
-from src.utils import last_saved_model
 from src.mcts.utils import normalize_probabilities
 from src.exact_solvers.c4_exact_solver import exact_ranked_moves_and_value
 
@@ -61,9 +60,10 @@ def _single_game_evaluation(
             all_possible_moves=all_possible_moves,
             concurrency=False,
             model=model,
+            plays_inferences={},
         )
         while not mcts.board.is_game_over():
-            mcts.search(ConfigGeneral.mcts_iterations)
+            mcts.search(ConfigSelfPlay.mcts_iterations)
             greedy = mcts.board.fullmove_number > ConfigMCTS.index_move_greedy
             _ = mcts.play(greedy, deterministic=deterministic)
             if not mcts.board.is_game_over():
@@ -73,6 +73,7 @@ def _single_game_evaluation(
                     all_possible_moves=all_possible_moves,
                     concurrency=False,
                     model=model,
+                    plays_inferences={},
                 )
         board = mcts.board
     result = board.get_result(keep_same_player=True)
@@ -83,27 +84,23 @@ def _single_game_evaluation(
     return result_current_model, solver_scores
 
 
-def evaluate_against_last_model(
-    current_model: PolicyValueModel,
-    previous_model: Optional[PolicyValueModel] = None,
-    run_path: Optional[str] = None,
+def evaluate_two_models(
+    model: PolicyValueModel,
+    other_model: PolicyValueModel,
     evaluate_with_mcts: bool = False,
     evaluate_with_solver: bool = False,
     deterministic: bool = False,
-) -> Tuple[PolicyValueModel, float, Optional[float]]:
+) -> Tuple[float, Optional[float]]:
     if evaluate_with_solver:
         if evaluate_with_mcts:
             raise NotImplementedError
-    if previous_model is None:
-        assert run_path is not None
-        previous_model = last_saved_model(run_path)
     all_possible_moves = get_all_possible_moves()
     score_current_model = []
     solver_scores = []  # only used if evaluate_with_mcts is False for now
     for game_index in range(ConfigServing.evaluation_games_number):
         result_current_model_game, solver_scores_game = _single_game_evaluation(
-            current_model=current_model,
-            previous_model=previous_model,
+            current_model=model,
+            previous_model=other_model,
             game_index=game_index,
             all_possible_moves=all_possible_moves,
             evaluate_with_mcts=evaluate_with_mcts,
@@ -123,9 +120,9 @@ def evaluate_against_last_model(
     score_current_model = np.array(score_current_model)
     if np.all(score_current_model == 0):
         # there are only draws, we choose to return the previous model with a 50-50 score
-        return previous_model, 0.5, solver_score
+        return 0.5, solver_score
     score = (score_current_model == 1).sum() / (score_current_model != 0).sum()
     if score >= ConfigServing.replace_min_score:
-        return current_model, score, solver_score
+        return score, solver_score
     else:
-        return previous_model, score, solver_score
+        return score, solver_score

@@ -1,8 +1,11 @@
 import os
-from typing import Optional
+import json
+import multiprocessing
+from typing import Optional, Union
 from functools import partial
 
-from src.config import ConfigModel, ConfigPath, ConfigGeneral
+from src import paths
+from src.config import ConfigPath, ConfigGeneral
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
 from src.model.tensorflow.model import PolicyValueModel
@@ -18,13 +21,22 @@ else:
     raise NotImplementedError
 
 
-# class intended to reproduce the same global behavior as request.app.state on fastapi server
-class LocalState:
-    def __init__(self):
-        self.number_samples = 0
-        self.iteration = 0
-        self.last_model = init_model()
-        self.best_model = init_model()
+def set_gpu_index(gpu_index: Union[int, str]):
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
+
+
+def create_all_directories(run_id: str):
+    for directory in [
+        paths.get_self_play_updated_mcts_path(run_id),
+        paths.get_training_path(run_id),
+        paths.get_evaluation_path(run_id),
+        paths.get_tensorboard_path(run_id),
+    ]:
+        os.makedirs(directory, exist_ok=True)
+
+
+def reset_plays_inferences_dict() -> dict:
+    return {} if ConfigGeneral.mono_process else multiprocessing.Manager().dict()
 
 
 def init_model(path: Optional[str] = None) -> PolicyValueModel:
@@ -36,61 +48,96 @@ def init_model(path: Optional[str] = None) -> PolicyValueModel:
     return model
 
 
-def last_saved_model(run_path: str) -> PolicyValueModel:
+def last_saved_model(run_id: str) -> PolicyValueModel:
+    training_path = paths.get_training_path(run_id)
+    if os.path.exists(os.path.join(training_path, ConfigPath.model_success)):
+        model = init_model(training_path)
+    else:
+        print(
+            f"Warning: no model found at {training_path}, initializing last model with random weights\n"
+            f"This warning can safely be ignored if the run is just beginning"
+        )
+        model = init_model()
+    return model
+
+
+def best_saved_model(run_id: str) -> PolicyValueModel:
+    # max_iteration_name folder should contain the last evaluation model, which is the best model so far
+    evaluation_path = paths.get_evaluation_path(run_id)
     try:
-        # max_iteration_name folder should contain last best saved model
-        max_iteration_name = last_iteration_name(run_path)
-        last_best_saved_model = init_model(os.path.join(run_path, max_iteration_name))
-    except (ValueError, FileNotFoundError):
-        print(f"Warning: {run_path} not found, initializing model with random weights")
-        last_best_saved_model = init_model()
-    return last_best_saved_model
+        max_iteration_name = last_evaluation_iteration_name(evaluation_path)
+        model = init_model(os.path.join(evaluation_path, max_iteration_name))
+    except ValueError:
+        print(
+            f"Warning: no model found at {evaluation_path}, initializing best model with random weights\n"
+            f"This warning can safely be ignored if the run is just beginning"
+        )
+        model = init_model()
+    return model
 
 
-def last_iteration_name(
-    run_path: str, prefix: str = "iteration", sep: str = "_"
+def best_saved_model_hash(run_id: str) -> Optional[str]:
+    # max_iteration_name folder should contain the last evaluation model, which is the best model so far
+    evaluation_path = paths.get_evaluation_path(run_id)
+    try:
+        max_iteration_name = last_evaluation_iteration_name(evaluation_path)
+        with open(
+            os.path.join(evaluation_path, max_iteration_name, ConfigPath.model_meta),
+            "r",
+        ) as fp:
+            model_hash = json.loads(fp.read()).get("hash")
+    except ValueError:
+        print(
+            f"Warning: no model hash found at {evaluation_path}, returning None instead\n"
+            f"This warning can safely be ignored if the run is just beginning"
+        )
+        model_hash = None
+    return model_hash
+
+
+def last_evaluation_iteration_name(
+    evaluation_path: str, prefix: str = "iteration", sep: str = "_"
 ) -> str:
     def _is_correct_iteration_directory(
-        directory: str, run_path: str, prefix: str
+        directory: str, evaluation_path: str, prefix: str
     ) -> bool:
         return directory.startswith(prefix) and os.path.exists(
-            os.path.join(run_path, directory, ConfigModel.model_meta)
+            os.path.join(evaluation_path, directory, ConfigPath.model_success)
         )
 
     return max(
         filter(
-            partial(_is_correct_iteration_directory, run_path=run_path, prefix=prefix),
-            os.listdir(run_path),
+            partial(
+                _is_correct_iteration_directory,
+                evaluation_path=evaluation_path,
+                prefix=prefix,
+            ),
+            os.listdir(evaluation_path),
         ),
         key=lambda x: int(x.split(sep)[-1]),
     )
 
 
 def visualize_mcts_iteration(
-    mcts_visualizer: MctsVisualizer,
-    mcts_tree: MCTS,
-    mcts_name: str,
-    iteration_path: str,
-    run_id: Optional[str] = None,
+    mcts_visualizer: MctsVisualizer, mcts_tree: MCTS, iteration: int, run_id: str,
 ) -> None:
+    mcts_name_full, mcts_name_light = (
+        f"mcts_iteration_{iteration}_full",
+        f"mcts_iteration_{iteration}_light",
+    )
+    iteration_path = paths.get_self_play_iteration_path(run_id, iteration)
+    updated_mcts_path = paths.get_self_play_updated_mcts_path(run_id)
     # by default save only mcts played edges so that save is fast
     mcts_visualizer.build_mcts_graph(
-        mcts_tree.root, mcts_name=f"{mcts_name}_light", remove_unplayed_edge=True
+        mcts_tree.root, mcts_name=mcts_name_light, remove_unplayed_edge=True
     )
     mcts_visualizer.save_as_pdf(directory=iteration_path)
     # if mcts generated by an updated model then save it also at runpath level to visualize those trees more easily
     if mcts_visualizer.is_updated:
-        assert run_id is not None
         # save light mcts also under updated mcts directory path
-        updated_mcts_dir_path = os.path.join(
-            ConfigPath.results_path,
-            ConfigGeneral.game,
-            run_id,
-            ConfigPath.updated_mcts_dir,
-        )
-        mcts_visualizer.save_as_pdf(directory=updated_mcts_dir_path)
+        mcts_visualizer.save_as_pdf(directory=updated_mcts_path)
         # save full mcts if it is an updated tree, even if save is slower
         mcts_visualizer.build_mcts_graph(
-            mcts_tree.root, mcts_name=f"{mcts_name}_full", remove_unplayed_edge=False
+            mcts_tree.root, mcts_name=mcts_name_full, remove_unplayed_edge=False
         )
-        mcts_visualizer.save_as_pdf(directory=updated_mcts_dir_path)
+        mcts_visualizer.save_as_pdf(directory=updated_mcts_path)

@@ -1,18 +1,22 @@
 # Custom AlphaZero
 
-Launch training / inference / evaluation server:
+Launch web server:
 ```bash
-uvicorn --port 5000 --host 0.0.0.0 src.serving.api:app
+uvicorn --port 5000 --host 0.0.0.0 src.serving.api.main:app
 ```
 
-Launch MCTS search:
+Launch self-play processes:
 ```bash
-python -m src.run
+python -m src.self_play
+```
+
+Launch train / evaluation process:
+```bash
+python -m src.train
 ```
 
 Launch tensorboard server:
 ```bash
-cd src
-tensorboard --port 6006 --logdir model/logs/
+tensorboard --port 6006 --logdir results/
 ```
 

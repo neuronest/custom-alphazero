@@ -21,13 +21,12 @@ class InferenceExample:
     inputs = {"uid": uid, "state": state, "concurrency": concurrency}
 
 
-class TrainingExample:
+class AppendQueueExample:
     all_possible_moves_length = len(get_all_possible_moves())
     state = Board().full_state
     policy = np.eye(all_possible_moves_length, 1).ravel()
     value = np.asarray(1)
     inputs = {
-        "run_id": "0",
         "states": np.stack([state, state]).tolist(),
         "policies": np.stack([policy, policy]).tolist(),
         "values": np.stack([value, value]).tolist(),

@@ -1,22 +1,25 @@
 import os
 
-gpu_index = "-1"
 tensorflow_log_level = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = tensorflow_log_level
 
 
 class ConfigGeneral:
     game = "connect_n"
-    concurrency = True
+    # -1 is used to disable the GPU
+    # other values should be used only once
+    self_play_gpu_index = "-1"
+    serving_gpu_index = "-1"
+    training_gpu_index = "0"
+    concurrency = False
     mono_process = False
+    http_inference = False
+
+
+class ConfigSelfPlay:
     discounting_factor = 1  # set to 1 to actually disable any discounting effect
-    mcts_iterations = 75
-    minimum_training_size = 2500
-    minimum_delta_size = 1000
-    samples_queue_size = 10000
-    training_iterations = 10000
-    run_with_http = False
+    samples_checkpoint_frequency = 1
+    mcts_iterations = 250
 
 
 class ConfigChess:
@@ -53,10 +56,10 @@ class ConfigMCTS:
 
 
 class ConfigModel:
-    model_suffix = "model"
-    model_meta = "meta.json"
+    training_epochs = 1
+    batch_size = 256
     l2_penalization_term = 1e-4
-    depth = 2
+    depth = 4
     maximum_learning_rate = 1e-2
     learning_rates = {
         range(0, 150000): 1e-2,
@@ -76,26 +79,46 @@ class ConfigServing:
     # seems not to run as fast as expected for now
     inference_batch_size = multiprocessing.cpu_count() - 1
     """
+    minimum_training_size = 2500
+    samples_queue_size = 10000
     inference_batch_size = 1
     inference_timeout = 1
-    model_checkpoint_frequency = 1
-    samples_checkpoint_frequency = 1
-    training_epochs = 25
-    batch_size = 256
-    evaluation_games_number = 100
+    model_evaluation_frequency = 50
+    model_checkpoint_frequency = 50
+    evaluation_games_number = 150
     replace_min_score = 0.55
+    training_loop_sleep_time = 0.5
     evaluate_with_mcts = False
-    evaluate_with_solver = True
+    evaluate_with_solver = False
 
 
 class ConfigPath:
-    inference_path = "/api/inference"
-    training_path = "/api/training"
-    results_path = "results"
-    samples_name = "samples.npz"
-    saved_inferences_name = "state_priors_value.pkl"
-    updated_mcts_dir = "updated_mcts"
-    tensorboard_endpath = "tensorboard"
-    mcts_visualization_endpath = "mcts_visualization"
-    connect4_solver_path = "./src/exact_solvers/c4solver"
+    # serving APIs
+    run_id_path = "/api/run-id"  # GET endpath
+    queue_path = "/api/queue"
+    append_queue_path = queue_path + "/append"  # PATCH endpath
+    retrieve_queue_path = queue_path + "/retrieve"  # PUT endpath
+    size_queue_path = queue_path + "/size"  # GET endpath
+    best_model_path = "/api/best-model"
+    update_best_model_path = best_model_path + "/update"  # PUT endpath
+    inference_path = "/api/inference"  # POST endpath
+    # disk paths
+    results_dir = "results"  # results/
+    self_play_dir = "self_play"  # results/{game}/{run_id}/self_play
+    training_dir = "training"  # results/{game}/{run_id}/training
+    evaluation_dir = "evaluation"  # results/{game}/{run_id}/evaluation
+    samples_file = (
+        "samples.npz"  # results/{game}/{run_id}/self_play/{iteration}/samples.npz
+    )
+    """
+    results/{game}/{run_id}/training/model*
+    results/{game}/{run_id}/evaluation/{iteration}/model*
+    """
+    model_prefix = "model"
+    model_meta = "meta.json"
+    model_success = "MODEL_SAVED_SUCCESSFULLY"
+    updated_mcts_dir = "updated_mcts"  # results/{game}/{run_id}/self_play/updated_mcts
+    tensorboard_dir = "tensorboard"  # results/{game}/{run_id}/tensorboard
+    # exact solver
+    connect4_solver_bin = "./src/exact_solvers/c4solver"
     connect4_opening_book = "./src/exact_solvers/7x6.book"
