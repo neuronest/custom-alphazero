@@ -145,6 +145,7 @@ if __name__ == "__main__":
             is_best_model_updated = True
         else:
             is_best_model_updated = False
+        mcts_visualizer = MctsVisualizer(is_updated=is_best_model_updated)
         states, policies, rewards, mcts_trees = play(
             run_id, plays_inferences=plays_inferences
         )
@@ -171,5 +172,4 @@ if __name__ == "__main__":
             iteration=self_play_iteration,
             run_id=run_id,
         )
-        mcts_visualizer = MctsVisualizer(is_updated=is_best_model_updated)
         self_play_iteration += 1
