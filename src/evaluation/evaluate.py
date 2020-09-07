@@ -60,6 +60,7 @@ def _single_game_evaluation(
             all_possible_moves=all_possible_moves,
             concurrency=False,
             model=model,
+            plays_inferences={},
         )
         while not mcts.board.is_game_over():
             mcts.search(ConfigSelfPlay.mcts_iterations)
@@ -72,6 +73,7 @@ def _single_game_evaluation(
                     all_possible_moves=all_possible_moves,
                     concurrency=False,
                     model=model,
+                    plays_inferences={},
                 )
         board = mcts.board
     result = board.get_result(keep_same_player=True)
