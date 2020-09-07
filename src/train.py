@@ -2,13 +2,13 @@ import time
 import numpy as np
 from typing import Tuple
 
-from src.config import ConfigGeneral, ConfigServing
+from src.config import ConfigGeneral, ConfigServing, ConfigModel
 from src.utils import set_gpu_index, last_saved_model
 from src.serving.factory import retrieve_queue, get_run_id, update_best_model
 from src.model.tensorflow.train import train_and_report
 
 
-def _consume_queue(
+def _append_and_limit_queues(
     local_states_queue: np.ndarray,
     local_policies_queue: np.ndarray,
     local_values_queue: np.ndarray,
@@ -46,14 +46,12 @@ def training_loop(run_id: str):
             local_states_queue,
             local_policies_queue,
             local_values_queue,
-        ) = _consume_queue(
+        ) = _append_and_limit_queues(
             local_states_queue, local_policies_queue, local_values_queue,
         )
         if len(local_states_queue) >= ConfigServing.minimum_training_size:
             sample_indexes = np.random.choice(
-                len(local_states_queue),
-                ConfigServing.minimum_training_size,
-                replace=False,
+                len(local_states_queue), ConfigModel.batch_size, replace=False,
             )
             states_batch, policies_batch, values_batch = (
                 local_states_queue[sample_indexes],
