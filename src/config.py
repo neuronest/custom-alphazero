@@ -94,14 +94,14 @@ class ConfigServing:
 
 class ConfigPath:
     # serving APIs
-    run_id_path = "/api/run-id"
+    run_id_path = "/api/run-id"  # GET endpath
     queue_path = "/api/queue"
-    append_queue_path = queue_path + "/append"
-    retrieve_queue_path = queue_path + "/retrieve"
-    size_queue_path = queue_path + "/size"
+    append_queue_path = queue_path + "/append"  # PATCH endpath
+    retrieve_queue_path = queue_path + "/retrieve"  # PUT endpath
+    size_queue_path = queue_path + "/size"  # GET endpath
     best_model_path = "/api/best-model"
-    update_best_model_path = best_model_path + "/update"
-    inference_path = "/api/inference"
+    update_best_model_path = best_model_path + "/update"  # PUT endpath
+    inference_path = "/api/inference"  # POST endpath
     # disk paths
     results_dir = "results"  # results/
     self_play_dir = "self_play"  # results/{game}/{run_id}/self_play
