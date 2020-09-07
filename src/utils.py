@@ -53,6 +53,10 @@ def last_saved_model(run_id: str) -> PolicyValueModel:
     if os.path.exists(os.path.join(training_path, ConfigPath.model_success)):
         model = init_model(training_path)
     else:
+        print(
+            f"Warning: no model found at {training_path}, initializing last model with random weights\n"
+            f"This warning can safely be ignored if the run is just beginning"
+        )
         model = init_model()
     return model
 
