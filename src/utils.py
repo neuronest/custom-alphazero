@@ -20,6 +20,8 @@ elif ConfigGeneral.game == "connect_n":
 else:
     raise NotImplementedError
 
+load_model_from_path = PolicyValueModel.load_model_from_path
+
 
 # class intended to reproduce the same global behavior as request.app.state on fastapi server
 class LocalState:
@@ -30,12 +32,16 @@ class LocalState:
         self.best_model = init_model()
 
 
-def init_model(path: Optional[str] = None) -> PolicyValueModel:
-    model = PolicyValueModel(
-        input_dim=Board().full_state.shape, action_space=len(get_all_possible_moves())
-    )
+def init_model(path: Optional[str] = None, *args, **kwargs) -> PolicyValueModel:
     if path is not None:
-        model.load_with_meta(path)
+        model = load_model_from_path(path)
+    else:
+        model = PolicyValueModel(
+            input_dim=Board().full_state.shape,
+            action_space=len(get_all_possible_moves()),
+            *args,
+            **kwargs,
+        )
     return model
 
 
