@@ -56,7 +56,6 @@ class ConfigModel:
     model_suffix = "model"
     model_meta = "meta.json"
     l2_penalization_term = 1e-4
-    depth = 2
     maximum_learning_rate = 1e-2
     learning_rates = {
         range(0, 150000): 1e-2,
@@ -65,6 +64,16 @@ class ConfigModel:
     minimum_learning_rate = 1e-4
     momentum = 0.9
     filters = 128
+    strides = (1, 1)
+    padding = "same"
+    activation = "relu"
+    batch_normalization = True
+    residual_residual_connexion = True
+    residual_depth = 2
+    value_hidden_dim = 256
+    value_kernel_size = 1
+    residual_kernel_size = 2
+    policy_kernel_size = 1
 
 
 class ConfigServing:
