@@ -3,8 +3,6 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer, Activation, BatchNormalization, Add, Conv2D
 from tensorflow.keras.regularizers import l2
 
-from src.config import ConfigModel
-
 # https://github.com/tensorflow/tensorflow/issues/32477#issuecomment-556032114
 BatchNormalization._USE_V2_BEHAVIOR = False
 
@@ -27,6 +25,7 @@ class InnerConvBlock(Layer):
         padding="same",
         activation=None,
         batch_normalization=False,
+        l2_penalization_term=1e-4,
     ):
         super(InnerConvBlock, self).__init__()
         self.activation = activation
@@ -38,7 +37,7 @@ class InnerConvBlock(Layer):
                 kernel_size=kernel_size,
                 padding=padding,
                 strides=strides,
-                kernel_regularizer=l2(ConfigModel.l2_penalization_term),
+                kernel_regularizer=l2(l2_penalization_term),
             )
         else:
             self.conv_layer = Conv2D(
@@ -46,7 +45,7 @@ class InnerConvBlock(Layer):
                 kernel_size,
                 padding=padding,
                 strides=strides,
-                kernel_regularizer=l2(ConfigModel.l2_penalization_term),
+                kernel_regularizer=l2(l2_penalization_term),
             )
         self.activation_layer = (
             Activation(self.activation) if self.activation is not None else None
@@ -75,7 +74,8 @@ class OuterConvBlock(Layer):
         padding="same",
         activation=None,
         batch_normalization=False,
-        residual_connexion=None,
+        residual_connexion=False,
+        l2_penalization_term=1e-4,
     ):
         super(OuterConvBlock, self).__init__()
         self.activation = activation
@@ -83,30 +83,34 @@ class OuterConvBlock(Layer):
         self.input_dim = input_dim
         self.filters = filters
         self.inner_conv_1 = InnerConvBlock(
+            input_dim=input_dim,
             filters=filters,
             kernel_size=kernel_size,
-            input_dim=input_dim,
             padding=padding,
             activation=activation,
             batch_normalization=batch_normalization,
+            l2_penalization_term=l2_penalization_term,
         )
         self.inner_conv_2 = InnerConvBlock(
+            input_dim=None,
             filters=filters,
             kernel_size=kernel_size,
             input_dim=None,
             padding=padding,
             activation=None,
             batch_normalization=batch_normalization,
+            l2_penalization_term=l2_penalization_term,
         )
         if self.residual_connexion:
             self.residual_connexion = InnerConvBlock(
+                input_dim=input_dim,
                 filters=filters,
                 kernel_size=(1, 1),
                 strides=(1, 1),
-                input_dim=input_dim,
                 padding=padding,
                 activation=None,
                 batch_normalization=batch_normalization,
+                l2_penalization_term=l2_penalization_term,
             )
             self.add_residual = Add()
         else:

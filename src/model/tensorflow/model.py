@@ -25,6 +25,7 @@ class ResidualTower(Layer):
         batch_normalization=True,
         residual_connexion=True,
         depth=20,
+        l2_penalization_term=1e-4,
     ):
         super(ResidualTower, self).__init__()
         self.conv_blocks = []
@@ -37,6 +38,7 @@ class ResidualTower(Layer):
                 padding=padding,
                 activation=activation,
                 batch_normalization=batch_normalization,
+                l2_penalization_term=l2_penalization_term,
             )
         )
         for depth_i in range(depth):
@@ -49,6 +51,7 @@ class ResidualTower(Layer):
                     activation=activation,
                     batch_normalization=batch_normalization,
                     residual_connexion=residual_connexion,
+                    l2_penalization_term=l2_penalization_term,
                 )
             )
 
@@ -70,6 +73,7 @@ class PolicyHead(Layer):
         padding="same",
         activation="relu",
         batch_normalization=True,
+        l2_penalization_term=1e-4,
     ):
         super(PolicyHead, self).__init__()
         self.inner_conv = InnerConvBlock(
@@ -80,12 +84,13 @@ class PolicyHead(Layer):
             padding=padding,
             activation=activation,
             batch_normalization=batch_normalization,
+            l2_penalization_term=l2_penalization_term,
         )
         self.flatten = Flatten()
         self.dense = Dense(
             units=output_dim,
             activation="softmax",
-            kernel_regularizer=l2(ConfigModel.l2_penalization_term),
+            kernel_regularizer=l2(l2_penalization_term),
             name="policy_outputs",
         )
 
@@ -110,6 +115,7 @@ class ValueHead(Layer):
         activation="relu",
         final_activation="tanh",
         batch_normalization=True,
+        l2_penalization_term=1e-4,
     ):
         super(ValueHead, self).__init__()
         self.inner_conv = InnerConvBlock(
@@ -120,17 +126,18 @@ class ValueHead(Layer):
             padding=padding,
             activation=activation,
             batch_normalization=batch_normalization,
+            l2_penalization_term=l2_penalization_term,
         )
         self.flatten = Flatten()
         self.dense_1 = Dense(
             units=hidden_dim,
             activation=activation,
-            kernel_regularizer=l2(ConfigModel.l2_penalization_term),
+            kernel_regularizer=l2(l2_penalization_term),
         )
         self.dense_2 = Dense(
             units=output_dim,
             activation=final_activation,
-            kernel_regularizer=l2(ConfigModel.l2_penalization_term),
+            kernel_regularizer=l2(l2_penalization_term),
             name="value_outputs",
         )
 
@@ -145,18 +152,79 @@ class ValueHead(Layer):
 
 
 class PolicyValueModel(Model):
-    def __init__(self, input_dim, action_space):
-        super(PolicyValueModel, self).__init__()
+    def __init__(
+        self,
+        input_dim,
+        action_space,
+        l2_penalization_term=ConfigModel.l2_penalization_term,  # is shared by all layers
+        filters=ConfigModel.filters,  # is shared by all layers
+        maximum_learning_rate=ConfigModel.maximum_learning_rate,
+        momentum=ConfigModel.momentum,
+        strides=ConfigModel.strides,  # is shared by all layers
+        padding=ConfigModel.padding,  # is shared by all layers
+        activation=ConfigModel.activation,  # is shared by all layers
+        batch_normalization=ConfigModel.batch_normalization,  # is shared by all layers
+        residual_residual_connexion=ConfigModel.residual_residual_connexion,
+        residual_depth=ConfigModel.residual_depth,
+        residual_kernel_size=ConfigModel.residual_kernel_size,
+        policy_kernel_size=ConfigModel.policy_kernel_size,
+        value_kernel_size=ConfigModel.value_kernel_size,
+        value_hidden_dim=ConfigModel.value_hidden_dim,
+    ):
         self.input_dim = input_dim
         self.action_space = action_space
+        self.l2_penalization_term = l2_penalization_term
+        self.filters = filters
+        self.maximum_learning_rate = maximum_learning_rate
+        self.momentum = momentum
+        self.strides = strides
+        self.padding = padding
+        self.activation = activation
+        self.batch_normalization = batch_normalization
+        self.residual_residual_connexion = residual_residual_connexion
+        self.residual_depth = residual_depth
+        self.residual_kernel_size = residual_kernel_size
+        self.policy_kernel_size = policy_kernel_size
+        self.value_kernel_size = value_kernel_size
+        self.value_hidden_dim = value_hidden_dim
+
+        super(PolicyValueModel, self).__init__()
         self.residual_tower = ResidualTower(
-            input_dim, filters=ConfigModel.filters, depth=ConfigModel.depth
+            input_dim=self.input_dim,
+            filters=self.filters,
+            kernel_size=(self.residual_kernel_size, self.residual_kernel_size),
+            strides=self.strides,
+            padding=self.padding,
+            activation=self.activation,
+            batch_normalization=self.batch_normalization,
+            residual_connexion=self.residual_residual_connexion,
+            depth=self.residual_depth,
+            l2_penalization_term=self.l2_penalization_term,
         )
-        self.policy_head = PolicyHead(output_dim=action_space)
-        self.value_head = ValueHead(output_dim=1)
+        self.policy_head = PolicyHead(
+            output_dim=self.action_space,
+            filters=self.filters,
+            kernel_size=(self.policy_kernel_size, self.policy_kernel_size),
+            strides=self.strides,
+            padding=self.padding,
+            activation=self.activation,
+            batch_normalization=self.batch_normalization,
+            l2_penalization_term=self.l2_penalization_term,
+        )
+        self.value_head = ValueHead(
+            output_dim=1,
+            hidden_dim=self.value_hidden_dim,
+            filters=self.filters,
+            kernel_size=(self.value_kernel_size, self.value_kernel_size),
+            strides=self.strides,
+            padding=self.padding,
+            activation=self.activation,
+            final_activation="tanh",
+            batch_normalization=self.batch_normalization,
+            l2_penalization_term=self.l2_penalization_term,
+        )
         self.optimizer = SGD(
-            learning_rate=ConfigModel.maximum_learning_rate,
-            momentum=ConfigModel.momentum,
+            learning_rate=self.maximum_learning_rate, momentum=self.momentum
         )
         self.compile(optimizer=self.optimizer, loss=[policy_loss, value_loss])
         self(
