@@ -1,6 +1,8 @@
 import os
 import json
 import hashlib
+import inspect
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
@@ -250,9 +252,11 @@ class PolicyValueModel(Model):
         value_outputs = self.value_head(outputs)
         return policy_outputs, value_outputs
 
-    def load_with_meta(self, path):
-        self.load_weights(os.path.join(path, ConfigModel.model_suffix))
-        with open(os.path.join(path, ConfigModel.model_meta), "r") as fp:
+    def _load_weights_and_meta(
+        self, path, model_suffix, model_meta,
+    ):
+        self.load_weights(os.path.join(path, model_suffix))
+        with open(os.path.join(path, model_meta), "r") as fp:
             metadata = json.load(fp)
         self.steps = int(metadata.get("steps"))
         self.update_learning_rate(float(metadata.get("learning_rate")))
@@ -261,14 +265,35 @@ class PolicyValueModel(Model):
         except AssertionError:
             print(f"Unexpected weights hash recovered during model loading at {path}!")
 
-    def save_with_meta(self, path):
-        self.save_weights(os.path.join(path, ConfigModel.model_suffix))
+    @staticmethod
+    def load_model_from_path(
+        path, model_suffix=ConfigModel.model_suffix, model_meta=ConfigModel.model_meta
+    ):
+        with open(os.path.join(path, model_meta), "r") as fp:
+            metadata = json.load(fp)
+        model = PolicyValueModel(**metadata.get("init_model"))
+        model._load_weights_and_meta(path, model_suffix, model_meta)
+        return model
+
+    def save_with_meta(
+        self,
+        path,
+        model_suffix=ConfigModel.model_suffix,
+        model_meta=ConfigModel.model_meta,
+    ):
+        self.save_weights(os.path.join(path, model_suffix))
         metadata = {
             "steps": int(self.steps),
             "learning_rate": self.get_learning_rate(),
             "hash": self.hash,
+            "init_model": dict(
+                [
+                    (arg, getattr(self, arg))
+                    for arg in inspect.signature(self.__init__).parameters
+                ]
+            ),
         }
-        with open(os.path.join(path, ConfigModel.model_meta), "w") as fp:
+        with open(os.path.join(path, model_meta), "w") as fp:
             json.dump(metadata, fp, sort_keys=True, indent=4)
 
     def get_learning_rate(self) -> float:
