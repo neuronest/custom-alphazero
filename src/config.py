@@ -1,5 +1,8 @@
 import os
 
+from ray.tune import grid_search, sample_from
+import numpy as np
+
 gpu_index = "-1"
 tensorflow_log_level = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
@@ -108,3 +111,55 @@ class ConfigPath:
     mcts_visualization_endpath = "mcts_visualization"
     connect4_solver_path = "./src/exact_solvers/c4solver"
     connect4_opening_book = "./src/exact_solvers/7x6.book"
+
+
+class ConfigArchiSearch:
+    # run_id is on the %Y-%m-%d-%H%M%S format
+    # must be the run_id of a past run of self-play and training
+    run_id = ""
+    iteration = 28
+    archi_searches_dir = "architecture_searches"
+    report_filename = "search_report"
+    # if "debug" then it will run on a single process and be easier to debug
+    running_mode = ""
+    search_mode = "min"
+    search_stop_criterion = {
+        # "mean_accuracy": 0.80,
+        "training_iteration": 6,
+    }
+    resources_per_trial = {"cpu": 4, "gpu": 1}
+    perturbation_interval = 2
+    num_samples_from_config = 20
+    hyperparam_config = {
+        "l2_penalization_term": sample_from(
+            lambda _: np.random.choice(np.linspace(1e-4 / 10, 1e-4 * 10, 5))
+        ),
+        "maximum_learning_rate": sample_from(
+            lambda _: np.random.choice(np.linspace(1e-2 / 10, 1e-2 * 10, 5))
+        ),
+        "momentum": sample_from(
+            lambda _: np.random.choice(np.linspace(0.9 / 10, 0.95, 5))
+        ),
+        "filters": sample_from(lambda _: np.random.choice([32, 64, 128, 256])),
+        "strides": (1, 1),
+        "padding": "same",
+        "activation": "relu",
+        "batch_normalization": sample_from(lambda _: np.random.choice([True, False])),
+        "residual_residual_connexion": sample_from(
+            lambda _: np.random.choice([True, False])
+        ),
+        "residual_depth": sample_from(lambda _: np.random.choice([2, 4, 8, 16])),
+        "value_hidden_dim": sample_from(
+            lambda _: np.random.choice([64, 128, 256, 512])
+        ),
+        # gridsearch with several values increases a lot the number of trials
+        "value_kernel_size": grid_search([1, 2, 3]),
+        "residual_kernel_size": grid_search([1, 2, 3]),
+        "policy_kernel_size": grid_search([1, 2, 3]),
+    }
+    hyperparam_mutations = {
+        # list instead of lambda that throws errors sometimes
+        # must send a key that matches an argument in the model constructor
+        "maximum_learning_rate": np.linspace(0, 1, 20).tolist(),
+        "momentum": np.linspace(0, 1, 20).tolist(),
+    }
