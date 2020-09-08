@@ -31,7 +31,7 @@ if ConfigGeneral.run_with_http:
     from src.serving.factory import train_run_samples_post as train_run_samples
 else:
     from src.model.tensorflow.train import train_run_samples_local
-    from src.utils import LocalState
+    from src.utils import LocalState, save_queue
 
     train_run_samples = partial(train_run_samples_local, local_state=LocalState())
 
@@ -232,6 +232,12 @@ if __name__ == "__main__":
                 mcts_name=f"mcts_iteration_{iteration}",
                 iteration_path=iteration_path,
                 run_id=run_id,
+            )
+            save_queue(
+                states_queue=states_queue,
+                policies_queue=policies_queue,
+                rewards_queue=rewards_queue,
+                directory_path=iteration_path,
             )
             mcts_visualizer = MctsVisualizer(is_updated=updated)
             states_batch = policies_batch = rewards_batch = None

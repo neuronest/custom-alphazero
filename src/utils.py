@@ -1,11 +1,13 @@
 import os
-from typing import Optional
+from typing import Optional, Tuple
 from functools import partial
 
 from src.config import ConfigModel, ConfigPath, ConfigGeneral
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
 from src.model.tensorflow.model import PolicyValueModel
+import numpy as np
+import pickle
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -94,3 +96,43 @@ def visualize_mcts_iteration(
             mcts_tree.root, mcts_name=f"{mcts_name}_full", remove_unplayed_edge=False
         )
         mcts_visualizer.save_as_pdf(directory=updated_mcts_dir_path)
+
+
+def save_queue(
+    states_queue: np.ndarray,
+    policies_queue: np.ndarray,
+    rewards_queue: np.ndarray,
+    directory_path: str,
+) -> None:
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.states_filename}_queue.pkl"), "wb"
+    ) as f:
+        pickle.dump(states_queue, f)
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.policies_filename}_queue.pkl"),
+        "wb",
+    ) as f:
+        pickle.dump(policies_queue, f)
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.rewards_filename}_queue.pkl"),
+        "wb",
+    ) as f:
+        pickle.dump(rewards_queue, f)
+
+
+def load_queue(directory_path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.states_filename}_queue.pkl"), "rb"
+    ) as f:
+        states = pickle.load(f)
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.policies_filename}_queue.pkl"),
+        "rb",
+    ) as f:
+        policies = pickle.load(f)
+    with open(
+        os.path.join(directory_path, f"{ConfigGeneral.rewards_filename}_queue.pkl"),
+        "rb",
+    ) as f:
+        rewards = pickle.load(f)
+    return states, policies, rewards
