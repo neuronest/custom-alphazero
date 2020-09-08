@@ -2,12 +2,13 @@ import os
 from typing import Optional, Tuple
 from functools import partial
 
-from src.config import ConfigModel, ConfigPath, ConfigGeneral
+import numpy as np
+import pickle
+
+from src.config import ConfigModel, ConfigPath, ConfigGeneral, ConfigArchiSearch
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
 from src.model.tensorflow.model import PolicyValueModel
-import numpy as np
-import pickle
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -136,3 +137,19 @@ def load_queue(directory_path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]
     ) as f:
         rewards = pickle.load(f)
     return states, policies, rewards
+
+
+def save_architecture_search(
+    search_report: dict, directory_path: str, report_filename: str = "analysis",
+):
+    os.makedirs(directory_path, exist_ok=True)
+    with open(os.path.join(directory_path, f"{report_filename}.pkl"), "wb") as f:
+        pickle.dump(search_report, f)
+
+
+def load_architecture_search(
+    directory_path=".", report_filename: str = ConfigArchiSearch.report_filename,
+):
+    with open(os.path.join(directory_path, f"{report_filename}.pkl"), "rb") as f:
+        analysis = pickle.load(f)
+    return analysis
