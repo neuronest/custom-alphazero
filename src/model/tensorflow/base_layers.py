@@ -86,6 +86,7 @@ class OuterConvBlock(Layer):
             input_dim=input_dim,
             filters=filters,
             kernel_size=kernel_size,
+            # todo: maybe add strides argument
             padding=padding,
             activation=activation,
             batch_normalization=batch_normalization,
@@ -95,7 +96,9 @@ class OuterConvBlock(Layer):
             input_dim=None,
             filters=filters,
             kernel_size=kernel_size,
+            # todo: maybe add strides argument
             padding=padding,
+            # activation is None because residual connection is done before activation
             activation=None,
             batch_normalization=batch_normalization,
             l2_penalization_term=l2_penalization_term,
