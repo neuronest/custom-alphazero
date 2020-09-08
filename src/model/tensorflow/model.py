@@ -1,6 +1,8 @@
 import os
 import json
 import hashlib
+import inspect
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
@@ -250,12 +252,14 @@ class PolicyValueModel(Model):
         value_outputs = self.value_head(outputs)
         return policy_outputs, value_outputs
 
-    def load_with_meta(self, path):
+    def _load_weights_and_meta(
+        self, path, model_prefix, model_meta, model_success=ConfigPath.model_success
+    ):
         assert os.path.exists(
-            os.path.join(path, ConfigPath.model_success)
+            os.path.join(path, model_success)
         ), f"No verification file of the model found at {path}!"
-        self.load_weights(os.path.join(path, ConfigPath.model_prefix))
-        with open(os.path.join(path, ConfigPath.model_meta), "r") as fp:
+        self.load_weights(os.path.join(path, model_prefix))
+        with open(os.path.join(path, model_meta), "r") as fp:
             metadata = json.load(fp)
         self.steps = int(metadata.get("steps"))
         self.update_learning_rate(float(metadata.get("learning_rate")))
@@ -263,16 +267,38 @@ class PolicyValueModel(Model):
             "hash"
         ), "Unexpected weights hash recovered during model loading at {path}!"
 
-    def save_with_meta(self, path):
-        self.save_weights(os.path.join(path, ConfigPath.model_prefix))
+    @staticmethod
+    def load_model_from_path(
+        path, model_prefix=ConfigModel.model_prefix, model_meta=ConfigModel.model_meta
+    ):
+        with open(os.path.join(path, model_meta), "r") as fp:
+            metadata = json.load(fp)
+        model = PolicyValueModel(**metadata.get("init_model"))
+        model._load_weights_and_meta(path, model_prefix, model_meta)
+        return model
+
+    def save_with_meta(
+        self,
+        path,
+        model_prefix=ConfigModel.model_prefix,
+        model_meta=ConfigModel.model_meta,
+        model_success=ConfigPath.model_success,
+    ):
+        self.save_weights(os.path.join(path, model_prefix))
         metadata = {
             "steps": int(self.steps),
             "learning_rate": self.get_learning_rate(),
             "hash": self.hash,
+            "init_model": dict(
+                [
+                    (arg, getattr(self, arg))
+                    for arg in inspect.signature(self.__init__).parameters
+                ]
+            ),
         }
-        with open(os.path.join(path, ConfigPath.model_meta), "w") as fp:
+        with open(os.path.join(path, model_meta), "w") as fp:
             json.dump(metadata, fp, sort_keys=True, indent=4)
-        open(os.path.join(path, ConfigPath.model_success), "wb").close()
+        open(os.path.join(path, model_success), "wb").close()
 
     def get_learning_rate(self) -> float:
         return float(self.optimizer.learning_rate.numpy())
