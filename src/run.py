@@ -2,9 +2,10 @@ import multiprocessing
 import os
 import time
 import random
-import numpy as np
 from typing import List, Tuple, Optional, Dict
 from functools import partial
+
+import numpy as np
 from datetime import datetime
 
 from src.config import ConfigGeneral, ConfigMCTS, ConfigPath
