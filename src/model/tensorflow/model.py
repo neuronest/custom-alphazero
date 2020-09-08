@@ -301,3 +301,6 @@ class PolicyValueModel(Model):
 
     def update_learning_rate(self, learning_rate: float):
         self.optimizer.learning_rate.assign(learning_rate)
+
+    def update_momentum(self, momentum: float) -> None:
+        self.optimizer.momentum.assign(momentum)
