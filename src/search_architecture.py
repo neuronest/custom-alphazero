@@ -102,8 +102,16 @@ def search_settings() -> dict:
     return search_settings
 
 
-if __name__ == "__main__":
+def handle_search_end(working_dir_before_search: str) -> None:
+    # ray has changed the working directory
+    if os.getcwd() != working_dir_before_search:
+        # reset working directory to the one we want and that has been changed by ray
+        os.chdir(working_dir_before_search)
 
+
+if __name__ == "__main__":
+    # check working dir here
+    search_working_dir = os.getcwd()
     initialize_search(ConfigArchiSearch.running_mode)
     archi_searcher = PopulationBasedTraining(
         time_attr="training_iteration",
@@ -120,11 +128,10 @@ if __name__ == "__main__":
         **search_settings(),
         raise_on_failed_trial=False,
     )
+    handle_search_end(working_dir_before_search=search_working_dir)
     search_report = report_from_ray_analysis(
         ray_analysis, "global_loss", ConfigArchiSearch.search_mode
     )
-    # reset working directory to the one we want and that has been changed by ray
-    os.chdir(os.path.join(os.path.dirname(__file__), ".."))
     save_architecture_search(
         search_report=search_report,
         directory_path=os.path.join(
