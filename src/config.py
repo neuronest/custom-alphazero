@@ -20,6 +20,9 @@ class ConfigGeneral:
     samples_queue_size = 10000
     training_iterations = 10000
     run_with_http = False
+    states_filename = "states"
+    policies_filename = "policies"
+    rewards_filename = "rewards"
 
 
 class ConfigChess:
