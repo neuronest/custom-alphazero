@@ -95,7 +95,6 @@ class OuterConvBlock(Layer):
             input_dim=None,
             filters=filters,
             kernel_size=kernel_size,
-            input_dim=None,
             padding=padding,
             activation=None,
             batch_normalization=batch_normalization,
