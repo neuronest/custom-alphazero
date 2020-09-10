@@ -14,17 +14,11 @@ from src.model.tensorflow.base_layers import policy_loss, value_loss
 load_model_from_path = PolicyValueModel.load_model_from_path
 
 
-def data_to_search_from(run_id, iteration, subset_size=int(1e6), p_val=0.25):
+def data_to_search_from(run_id, iteration, p_val=0.25):
     iteration_path = os.path.join(
         ConfigPath.results_path, ConfigGeneral.game, run_id, f"iteration_{iteration}",
     )
     states, policies, rewards = load_queue(iteration_path)
-    states, policies, rewards = (
-        states[:subset_size],
-        policies[:subset_size],
-        rewards[:subset_size],
-    )
-
     (
         states_tr,
         states_val,
@@ -93,7 +87,6 @@ def initialize_search(running_mode: str) -> None:
 def search_settings() -> dict:
     search_settings = {
         # if resources not available some trials may never end
-        # "resources_per_trial": {"cpu": 1, "gpu": 1},
         "resources_per_trial": ConfigArchiSearch.resources_per_trial,
         "stop": ConfigArchiSearch.search_stop_criterion,
         "config": ConfigArchiSearch.hyperparam_config,
