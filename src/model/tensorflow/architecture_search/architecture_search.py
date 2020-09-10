@@ -6,10 +6,12 @@ from ray.tune import run, Trainable
 from ray.tune.schedulers import PopulationBasedTraining
 import tensorflow as tf
 
-from src.utils import init_model, save_architecture_search, load_queue
+from src.utils import init_model, load_queue
 from src.config import ConfigGeneral, ConfigPath, ConfigArchiSearch
 from src.model.tensorflow.model import PolicyValueModel
 from src.model.tensorflow.base_layers import policy_loss, value_loss
+from src.model.tensorflow.architecture_search.render import report_from_ray_analysis
+from src.model.tensorflow.architecture_search.utils import save_architecture_search
 
 load_model_from_path = PolicyValueModel.load_model_from_path
 
@@ -65,16 +67,6 @@ class ArchitectureSearcher(Trainable):
         self.model.optimizer.momentum.assign(new_config["momentum"])
         self.config = new_config
         return True
-
-
-def report_from_ray_analysis(ray_analysis, searched_metric, search_mode):
-    return {
-        "best_config": ray_analysis.get_best_config(
-            metric=searched_metric, mode=search_mode
-        ),
-        "trial_dataframes": ray_analysis.trial_dataframes,
-        "main_dataframe": ray_analysis.dataframe(),
-    }
 
 
 def search_settings() -> dict:
