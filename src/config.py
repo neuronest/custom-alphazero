@@ -165,3 +165,32 @@ class ConfigArchiSearch:
         "maximum_learning_rate": np.linspace(0, 1, 20).tolist(),
         "momentum": np.linspace(0, 1, 20).tolist(),
     }
+
+    # analysis rendering section
+    discrete_hyperparameters = [
+        "activation",
+        "batch_normalization",
+        "filters",
+        "padding",
+        "policy_kernel_size",
+        "residual_depth",
+        "residual_kernel_size",
+        "residual_residual_connexion",
+        "strides",
+        "value_hidden_dim",
+        "value_kernel_size",
+    ]
+    continuous_hyperparameters = [
+        "l2_penalization_term",
+        "maximum_learning_rate",
+        "momentum",
+    ]
+    # architecture search report is a dictonary
+    # dictionary keys and the types of information stored are defined here
+    report_config = (
+        "best_config"  # dict mapps hyperparameter name to their optimal value
+    )
+    reports_trials = "trials"  # several DataFrame
+    report_on_trials = "aggregated_trials"  # all trials information in one DataFrame
+    # sums up information about the mean loss per hyperparameter value over trials
+    report_hyperparameters_contribution = "hyperparameters_contribution"
