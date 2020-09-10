@@ -77,13 +77,6 @@ def report_from_ray_analysis(ray_analysis, searched_metric, search_mode):
     }
 
 
-def initialize_search(running_mode: str) -> None:
-    if running_mode == "debug":
-        ray.init(local_mode=True)
-    else:
-        ray.init()
-
-
 def search_settings() -> dict:
     search_settings = {
         # if resources not available some trials may never end
@@ -93,6 +86,13 @@ def search_settings() -> dict:
         "num_samples": ConfigArchiSearch.num_samples_from_config,
     }
     return search_settings
+
+
+def initialize_search(running_mode: str) -> None:
+    if running_mode == "debug":
+        ray.init(local_mode=True)
+    else:
+        ray.init()
 
 
 def handle_search_end(working_dir_before_search: str) -> None:
