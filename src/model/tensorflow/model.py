@@ -269,7 +269,7 @@ class PolicyValueModel(Model):
 
     @staticmethod
     def load_model_from_path(
-        path, model_prefix=ConfigModel.model_prefix, model_meta=ConfigModel.model_meta
+        path, model_prefix=ConfigPath.model_prefix, model_meta=ConfigPath.model_meta
     ):
         with open(os.path.join(path, model_meta), "r") as fp:
             metadata = json.load(fp)
@@ -280,8 +280,8 @@ class PolicyValueModel(Model):
     def save_with_meta(
         self,
         path,
-        model_prefix=ConfigModel.model_prefix,
-        model_meta=ConfigModel.model_meta,
+        model_prefix=ConfigPath.model_prefix,
+        model_meta=ConfigPath.model_meta,
         model_success=ConfigPath.model_success,
     ):
         self.save_weights(os.path.join(path, model_prefix))
