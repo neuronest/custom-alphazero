@@ -49,9 +49,20 @@ def reset_plays_inferences_dict() -> dict:
     return {} if ConfigGeneral.mono_process else multiprocessing.Manager().dict()
 
 
-def init_model(path: Optional[str] = None, *args, **kwargs) -> PolicyValueModel:
+def init_model(
+    path: Optional[str] = None,
+    use_pbt_archi: bool = ConfigGeneral.use_pbt_architecture,
+    *args,
+    **kwargs,
+) -> PolicyValueModel:
     if path is not None:
         model = load_model_from_path(path)
+    elif use_pbt_archi:
+        model = PolicyValueModel(
+            input_dim=Board().full_state.shape,
+            action_space=len(get_all_possible_moves()),
+            **best_config(run_id=ConfigArchiSearch.run_id),
+        )
     else:
         model = PolicyValueModel(
             input_dim=Board().full_state.shape,

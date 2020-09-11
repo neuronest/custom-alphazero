@@ -18,6 +18,7 @@ class ConfigGeneral:
     concurrency = False
     mono_process = False
     http_inference = False
+    use_pbt_architecture = False
 
 
 class ConfigSelfPlay:
