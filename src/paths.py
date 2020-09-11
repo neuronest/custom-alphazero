@@ -24,6 +24,10 @@ def get_tensorboard_path(run_id: str) -> str:
     return os.path.join(get_run_path(run_id), ConfigPath.tensorboard_dir)
 
 
+def get_architecture_searches_path(run_id: str) -> str:
+    return os.path.join(get_run_path(run_id), ConfigPath.archi_searches_dir)
+
+
 def get_self_play_iteration_path(
     run_id: str, iteration: Union[str, int], prefix: str = "iteration", sep: str = "_"
 ) -> str:

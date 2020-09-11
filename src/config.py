@@ -144,7 +144,10 @@ class ConfigArchiSearch:
     # run_id is on the %Y-%m-%d-%H%M%S format
     # must be the run_id of a past run of self-play and training
     run_id = ""
-    iteration = 28
+    # gather samples from start iteration to end iteration
+    data_iteration_start = 50
+    data_iteration_end = 100
+    validation_percentage = 25
     report_filename = "search_report"
     # if "debug" then it will run on a single process and be easier to debug
     running_mode = ""

@@ -1,10 +1,17 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import os
 
 import pandas as pd
 import pickle
 
 from src.config import ConfigArchiSearch
+from src import paths
+
+
+def report_filename_with_iterations(
+    report_filename, iteration_start, iteration_end,
+):
+    return f"{report_filename}_iteration_{iteration_start}_to_{iteration_end}"
 
 
 def save_architecture_search(

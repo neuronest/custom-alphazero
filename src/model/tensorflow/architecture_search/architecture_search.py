@@ -5,22 +5,30 @@ import ray
 from ray.tune import run, Trainable
 from ray.tune.schedulers import PopulationBasedTraining
 import tensorflow as tf
+import numpy as np
 
-from src.utils import init_model, load_queue
-from src.config import ConfigGeneral, ConfigPath, ConfigArchiSearch
-from src.model.tensorflow.model import PolicyValueModel
+from src.utils import init_model, set_gpu_index, load_samples
+from src.config import ConfigArchiSearch
 from src.model.tensorflow.base_layers import policy_loss, value_loss
 from src.model.tensorflow.architecture_search.render import report_from_ray_analysis
-from src.model.tensorflow.architecture_search.utils import save_architecture_search
+from src.model.tensorflow.architecture_search.utils import (
+    save_architecture_search,
+    report_filename_with_iterations,
+)
+from src import paths
 
-load_model_from_path = PolicyValueModel.load_model_from_path
 
-
-def data_to_search_from(run_id, iteration, p_val=0.25):
-    iteration_path = os.path.join(
-        ConfigPath.results_path, ConfigGeneral.game, run_id, f"iteration_{iteration}",
-    )
-    states, policies, rewards = load_queue(iteration_path)
+def data_to_search_from(run_id, iteration_begin, iteration_end, p_val=0.25):
+    for i, iteration in enumerate(range(iteration_begin, iteration_end + 1)):
+        states_tmp, policies_tmp, rewards_tmp = load_samples(
+            paths.get_self_play_samples_path(run_id, iteration)
+        )
+        if i == 0:
+            states, policies, rewards = states_tmp, policies_tmp, rewards_tmp
+        else:
+            states = np.concatenate([states, states_tmp], axis=0)
+            policies = np.concatenate([policies, policies_tmp], axis=0)
+            rewards = np.concatenate([rewards, rewards_tmp], axis=0)
     (
         states_tr,
         states_val,
@@ -29,13 +37,17 @@ def data_to_search_from(run_id, iteration, p_val=0.25):
         rewards_tr,
         rewards_val,
     ) = train_test_split(states, policies, rewards, test_size=p_val, random_state=42)
+
     x_tr, y_tr = states_tr, [policies_tr, rewards_tr]
     x_val, y_val = states_val, [policies_val, rewards_val]
     return x_tr, y_tr, x_val, y_val
 
 
 x_tr, y_tr, x_val, y_val = data_to_search_from(
-    run_id=ConfigArchiSearch.run_id, iteration=ConfigArchiSearch.iteration
+    run_id=ConfigArchiSearch.run_id,
+    iteration_begin=ConfigArchiSearch.data_iteration_start,
+    iteration_end=ConfigArchiSearch.data_iteration_end,
+    p_val=ConfigArchiSearch.validation_percentage / 100,
 )
 
 
@@ -117,13 +129,16 @@ if __name__ == "__main__":
     search_report = report_from_ray_analysis(
         ray_analysis, "global_loss", ConfigArchiSearch.search_mode
     )
+    search_report_filename = report_filename_with_iterations(
+        ConfigArchiSearch.report_filename,
+        ConfigArchiSearch.data_iteration_start,
+        ConfigArchiSearch.data_iteration_end,
+    )
     save_architecture_search(
         search_report=search_report,
-        directory_path=os.path.join(
-            ConfigPath.results_path,
-            ConfigGeneral.game,
-            ConfigArchiSearch.run_id,
-            ConfigArchiSearch.archi_searches_dir,
-        ),
-        report_filename=f"{ConfigArchiSearch.report_filename}_iteration_{ConfigArchiSearch.iteration}",
+        directory_path=paths.get_architecture_searches_path(ConfigArchiSearch.run_id),
+        report_filename=search_report_filename,
+    )
+    print(
+        f"Architecture search done, search report has been saved at: {search_report_filename}"
     )

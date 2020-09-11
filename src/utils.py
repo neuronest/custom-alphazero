@@ -1,18 +1,17 @@
 import os
 import json
 import multiprocessing
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from functools import partial
 
 import numpy as np
-import pickle
 
-from src.config import ConfigModel, ConfigPath, ConfigGeneral, ConfigArchiSearch
 from src import paths
-from src.config import ConfigPath, ConfigGeneral
+from src.config import ConfigPath, ConfigGeneral, ConfigArchiSearch
 from src.mcts.mcts import MCTS
 from src.visualize_mcts import MctsVisualizer
 from src.model.tensorflow.model import PolicyValueModel
+from src.model.tensorflow.architecture_search.utils import best_config
 
 if ConfigGeneral.game == "chess":
     from src.chess.board import Board
@@ -29,6 +28,11 @@ load_model_from_path = PolicyValueModel.load_model_from_path
 
 def set_gpu_index(gpu_index: Union[int, str]):
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_index
+
+
+def load_samples(file_path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    arrays = np.load(file_path)
+    return arrays["states"], arrays["policies"], arrays["values"]
 
 
 def create_all_directories(run_id: str):
