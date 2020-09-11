@@ -107,6 +107,12 @@ def handle_search_end(working_dir_before_search: str) -> None:
 
 
 if __name__ == "__main__":
+    print(
+        f"{os.linesep}Architecture search is starting from run {ConfigArchiSearch.run_id}, iteration "
+        f"{ConfigArchiSearch.data_iteration_start} to {ConfigArchiSearch.data_iteration_end}, "
+        f"with {len(x_tr) + len(x_val)} samples{os.linesep}"
+    )
+    set_gpu_index("0,1")
     # check working dir here
     search_working_dir = os.getcwd()
     initialize_search(ConfigArchiSearch.running_mode)
