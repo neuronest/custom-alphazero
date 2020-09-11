@@ -3,7 +3,6 @@ import os
 from ray.tune import grid_search, sample_from
 import numpy as np
 
-gpu_index = "-1"
 tensorflow_log_level = "3"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = tensorflow_log_level
 
