@@ -1,13 +1,13 @@
 import os
-from src.model.tensorflow.architecture_search.utils import (
-    means_from_discrete,
-    means_from_continuous,
-)
 
 import pandas as pd
 
 from src import config
 from src.config import ConfigArchiSearch
+from src.model.tensorflow.architecture_search.utils import (
+    means_from_discrete,
+    means_from_continuous,
+)
 
 
 def report_from_ray_analysis(ray_analysis, searched_metric, search_mode):
@@ -34,15 +34,11 @@ def mean_metric_per_hyperparam_as_df(
     df_mean_losses = pd.DataFrame(
         columns=[hyperparameter_col, value_col, mean_col, distinct_col]
     )
-    for hyperparam in [c for c in df if "config/" in c]:
-        if (
-            hyperparam.replace("config/", "")
-            in ConfigArchiSearch.discrete_hyperparameters
-        ):
+    for hyperparam in [c for c in df if c.startswith("config/")]:
+        if hyperparam[len("config/") :] in ConfigArchiSearch.discrete_hyperparameters:
             means_by_values = means_from_discrete(df[hyperparam], df["global_loss"])
         elif (
-            hyperparam.replace("config/", "")
-            in ConfigArchiSearch.continuous_hyperparameters
+            hyperparam[len("config/") :] in ConfigArchiSearch.continuous_hyperparameters
         ):
             means_by_values = means_from_continuous(df[hyperparam], df["global_loss"])
         else:

@@ -120,6 +120,9 @@ class ConfigPath:
     self_play_dir = "self_play"  # results/{game}/{run_id}/self_play
     training_dir = "training"  # results/{game}/{run_id}/training
     evaluation_dir = "evaluation"  # results/{game}/{run_id}/evaluation
+    archi_searches_dir = (
+        "architecture_search"  # results/{game}/{run_id}/architecture_search
+    )
     samples_file = (
         "samples.npz"  # results/{game}/{run_id}/self_play/{iteration}/samples.npz
     )
@@ -142,7 +145,6 @@ class ConfigArchiSearch:
     # must be the run_id of a past run of self-play and training
     run_id = ""
     iteration = 28
-    archi_searches_dir = "architecture_searches"
     report_filename = "search_report"
     # if "debug" then it will run on a single process and be easier to debug
     running_mode = ""
