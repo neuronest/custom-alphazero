@@ -65,15 +65,17 @@ class MctsVisualizer:
         return node_description
 
     @staticmethod
-    def _describe_edge(edge, round_value_at=2):
-        uct = round(edge.upper_confidence_bound(), round_value_at)
-        q_value = round(edge.exploitation_term(), round_value_at)
-        u = round(edge.exploration_term(), round_value_at)
-        p = round(edge.prior, round_value_at)
+    def _describe_edge(edge):
+        uct = edge.upper_confidence_bound()
+        q_value = edge.exploitation_term()
+        u = edge.exploration_term()
+        p = edge.prior
         n = edge.visit_count
-        p_n = round(edge.proportion_n, round_value_at)
-        # .x just when with gravity and for connect_n, find something more general
-        label = f"UCT={uct} Q={q_value} U={u} {os.linesep} P={p} N={n} PN={p_n} A={edge.action.x}"
+        p_n = edge.proportion_n
+        label = (
+            f"UCT={uct:.2f} Q={q_value:.2f} U={u:.2f} {os.linesep} "
+            f"P={p:.2f} N={n} PN={p_n:.2f} A={edge.action}"
+        )
         color = "red" if edge.played else "black"
         line_width = "4" if edge.greedily_played else "1"
         return {"label": label, "color": color, "line_width": line_width}
@@ -115,12 +117,13 @@ class MctsVisualizer:
         )
         graph_mcts = Digraph("G", filename=f"{self.mcts_name}.gv")
         for edge in edges:
+            edge_description = MctsVisualizer._describe_edge(edge)
             graph_mcts.edge(
                 self._describe_node(edge.parent),
                 self._describe_node(edge.child),
-                color=MctsVisualizer._describe_edge(edge)["color"],
-                label=MctsVisualizer._describe_edge(edge)["label"],
-                penwidth=MctsVisualizer._describe_edge(edge)["line_width"],
+                color=edge_description["color"],
+                label=edge_description["label"],
+                penwidth=edge_description["line_width"],
             )
         return graph_mcts
 
