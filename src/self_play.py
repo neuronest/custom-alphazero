@@ -149,6 +149,14 @@ if __name__ == "__main__":
         states, policies, rewards, mcts_trees = play(
             run_id, plays_inferences=plays_inferences
         )
+        if ConfigSelfPlay.exclude_null_games:
+            null_games_indexes = rewards == 0
+            # we remove null games from the samples
+            states, policies, rewards = (
+                states[~null_games_indexes],
+                policies[~null_games_indexes],
+                rewards[~null_games_indexes],
+            )
         # we choose a MCST tree randomly to be traced afterwards
         # each tree results from a fixed state of the neural network, so there is no need to keep them all
         mcts_tree = random.choice(mcts_trees)
