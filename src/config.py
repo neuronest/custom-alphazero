@@ -91,6 +91,7 @@ class ConfigServing:
     training_loop_sleep_time = 0.5
     evaluate_with_mcts = False
     evaluate_with_solver = False
+    val_proportion = 0.25
 
 
 class ConfigPath:
