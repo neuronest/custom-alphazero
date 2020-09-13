@@ -18,7 +18,7 @@ def train(
     batch_size: int,
     epochs: int,
     validation_data: Optional[Tuple[np.ndarray, List[np.ndarray]]] = None,
-) -> float:
+) -> tf.keras.callbacks.History:
     policy_labels, value_labels = labels
     # Calling fit instead of apply_gradients seems to be preferred for now in TF2
     # https://github.com/tensorflow/tensorflow/issues/35585
