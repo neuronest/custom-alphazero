@@ -118,6 +118,8 @@ def training_loop(
     run_id: str,
     batch_size: int = ConfigModel.batch_size,
     val_proportion: float = ConfigServing.val_proportion,
+    minimum_training_size: int = ConfigServing.minimum_training_size,
+    training_loop_sleep_time: float = ConfigServing.training_loop_sleep_time,
 ) -> None:
     with_validation = val_proportion > 0
     last_model = last_saved_model(run_id)
@@ -129,8 +131,8 @@ def training_loop(
         local_queue, val_local_queue = update_training_queues(
             queue=local_queue, val_queue=val_local_queue
         )
-        if len(local_queue[0]) <= ConfigServing.minimum_training_size:
-            time.sleep(ConfigServing.training_loop_sleep_time)
+        if len(local_queue[0]) <= minimum_training_size:
+            time.sleep(training_loop_sleep_time)
             continue
         elif with_validation and len(val_local_queue[0]) >= batch_size:
             validation_data = queue_as_x_y_repr(
