@@ -92,11 +92,14 @@ def search_settings() -> dict:
     return search_settings
 
 
-def initialize_search(running_mode: str) -> None:
+def initialize_search(running_mode: str, max_gb_memory=16) -> None:
+    def _gb_to_bytes(nb_gb: int) -> int:
+        return nb_gb * 1000 * 1024 * 1024
+
     if running_mode == "debug":
-        ray.init(local_mode=True)
+        ray.init(local_mode=True, memory=_gb_to_bytes(max_gb_memory))
     else:
-        ray.init()
+        ray.init(memory=_gb_to_bytes(max_gb_memory))
 
 
 def handle_search_end(working_dir_before_search: str) -> None:
@@ -112,10 +115,12 @@ if __name__ == "__main__":
         f"{ConfigArchiSearch.data_iteration_start} to {ConfigArchiSearch.data_iteration_end}, "
         f"with {len(x_tr) + len(x_val)} samples{os.linesep}"
     )
-    set_gpu_index("0,1")
+    set_gpu_index(ConfigArchiSearch.search_gpu_index)
     # check working dir here
     search_working_dir = os.getcwd()
-    initialize_search(ConfigArchiSearch.running_mode)
+    initialize_search(
+        ConfigArchiSearch.running_mode, max_gb_memory=ConfigArchiSearch.max_gb_memory,
+    )
     archi_searcher = PopulationBasedTraining(
         time_attr="training_iteration",
         metric="global_loss",

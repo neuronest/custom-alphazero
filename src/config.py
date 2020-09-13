@@ -144,6 +144,9 @@ class ConfigArchiSearch:
     # run_id is on the %Y-%m-%d-%H%M%S format
     # must be the run_id of a past run of self-play and training
     run_id = ""
+    # may be one of "0" or "1" or "0,1" for both gpus
+    search_gpu_index = "0,1"
+    max_gb_memory = 30
     # gather samples from start iteration to end iteration
     data_iteration_start = 50
     data_iteration_end = 100
