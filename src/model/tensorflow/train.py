@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import os
 
 import numpy as np
@@ -17,6 +17,7 @@ def train(
     labels: List[np.ndarray],
     batch_size: int,
     epochs: int,
+    validation_data: Optional[Tuple[np.ndarray, List[np.ndarray]]] = None,
 ) -> float:
     policy_labels, value_labels = labels
     # Calling fit instead of apply_gradients seems to be preferred for now in TF2
@@ -28,9 +29,9 @@ def train(
         epochs=epochs,
         verbose=1,
         shuffle=False,
+        validation_data=validation_data,
     )
     model.steps += epochs * (np.ceil(inputs.shape[0] / batch_size).astype(int))
-    loss = history.history["loss"][-1]
     new_learning_rate = {
         ConfigModel.learning_rates[learning_rate]
         for learning_rate in ConfigModel.learning_rates
@@ -41,7 +42,7 @@ def train(
         if len(new_learning_rate)
         else ConfigModel.minimum_learning_rate
     )
-    return loss
+    return history
 
 
 def train_and_report(
@@ -52,21 +53,31 @@ def train_and_report(
     values_batch: np.ndarray,
     training_iteration: int,
     evaluation_iteration: int,
+    validation_data: Optional[Tuple[np.ndarray, List[np.ndarray]]] = None,
 ) -> Tuple[bool, bool]:
     tensorboard_path = paths.get_tensorboard_path(run_id)
     os.makedirs(tensorboard_path, exist_ok=True)
     writer = tf.summary.create_file_writer(tensorboard_path)
-    loss = train(
+    training_history = train(
         last_model,
         states_batch,
         [policies_batch, values_batch],
         epochs=ConfigModel.training_epochs,
         batch_size=ConfigModel.batch_size,
+        validation_data=validation_data,
     )
     if (training_iteration + 1) % ConfigServing.model_checkpoint_frequency == 0:
         last_model.save_with_meta(paths.get_training_path(run_id))
     with writer.as_default():
-        tf.summary.scalar("loss", loss, step=training_iteration)
+        tf.summary.scalar(
+            "loss", training_history.history["loss"][-1], step=training_iteration
+        )
+        if validation_data:
+            tf.summary.scalar(
+                "val_loss",
+                training_history.history["val_loss"][-1],
+                step=training_iteration,
+            )
         tf.summary.scalar("steps", last_model.steps, step=training_iteration)
         tf.summary.scalar(
             "learning rate", last_model.get_learning_rate(), step=training_iteration
