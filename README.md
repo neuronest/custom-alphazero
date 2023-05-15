@@ -2,17 +2,17 @@
 
 Launch web server:
 ```bash
-uvicorn --port 5000 --host 0.0.0.0 src.serving.api.main:app
+uvicorn --port 5000 --host 0.0.0.0 custom_alphazero.serving.api.main:app
 ```
 
 Launch self-play processes:
 ```bash
-python -m src.self_play
+python -m custom_alphazero.self_play
 ```
 
 Launch train / evaluation process:
 ```bash
-python -m src.train
+python -m custom_alphazero.train
 ```
 
 Launch tensorboard server:
